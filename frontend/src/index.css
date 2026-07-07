@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@theme {
+  --color-gold-300: #FDE047;
+  --color-gold-400: #FACC15;
+  --color-gold-500: #EAB308;
+  --color-gold-600: #CA8A04;
+  --color-gold-700: #A16207;
+
+  --color-black-800: #1F2937;
+  --color-black-900: #111827;
+  --color-black-950: #030712;
+}
+
+@layer base {
+  :root {
+    --bg-color: #ffffff;
+    --text-color: #111827;
+    --accent: #EAB308;
+    --glass-bg: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(0, 0, 0, 0.1);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-color: #030712; /* Premium Black */
+      --text-color: #f3f4f6;
+      --accent: #FACC15; /* Gold */
+      --glass-bg: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+  }
+}
+
+@layer utilities {
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+  }
+}
