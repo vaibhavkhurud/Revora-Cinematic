@@ -179,7 +179,9 @@ export const forgotPassword = async (req, res) => {
         );
 
         // MOCK EMAIL SENDING
-        const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+        // const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+        const resetUrl = `https://revora-cinematic.vercel.app/reset-password/${resetToken}`;
+
         console.log(`[MOCK EMAIL] To: ${email} | Click here to reset: ${resetUrl}`);
 
         res.status(200).json({ message: 'Password reset link sent (Check server console)' });
