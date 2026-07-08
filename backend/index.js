@@ -6,10 +6,12 @@ import authRoutes from './routes/authRoutes.js';
 import showroomRoutes from './routes/showroomRoutes.js';
 import packageRoutes from './routes/packageRoutes.js';
 import showroomOwnerRoutes from './routes/showroomOwnerRoutes.js';
+import connectDB from './config/db.js';
 
 dotenv.config();
 
 const app = express();
+connectDB();
 
 const allowedOrigins = [
     process.env.FRONTEND_URL,

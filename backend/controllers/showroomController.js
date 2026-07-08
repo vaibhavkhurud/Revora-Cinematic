@@ -1,4 +1,5 @@
-import db from '../config/db.js';
+import Showroom from '../models/Showroom.js';
+import Notification from '../models/Notification.js';
 
 // @desc    Get all showrooms with owner info + filters
 // @route   GET /api/showrooms
@@ -8,38 +9,50 @@ export const getAllShowrooms = async (req, res) => {
         const { status, search, page = 1, limit = 10 } = req.query;
         const offset = (parseInt(page) - 1) * parseInt(limit);
 
-        let query = `
-            SELECT s.id, s.name, s.address, s.contact_number, s.status, s.rejection_reason, s.created_at,
-                   u.id as owner_id, u.name as owner_name, u.email as owner_email
-            FROM showrooms s
-            JOIN users u ON s.owner_id = u.id
-            WHERE 1=1
-        `;
-        const params = [];
+        let query = {};
 
         if (status && status !== 'all') {
-            query += ` AND s.status = ?`;
-            params.push(status);
+            query.status = status;
         }
 
+        // We populate owner_id to get owner_name and owner_email
+        let showroomsQuery = Showroom.find(query)
+            .populate({
+                path: 'owner_id',
+                select: 'name email'
+            })
+            .sort({ created_at: -1 });
+
+        const showroomsData = await showroomsQuery.exec();
+        
+        // Manual search filtering after population because Mongoose doesn't support regex search on populated fields easily in a single query
+        let filteredShowrooms = showroomsData;
         if (search) {
-            query += ` AND (s.name LIKE ? OR u.name LIKE ? OR u.email LIKE ?)`;
-            const like = `%${search}%`;
-            params.push(like, like, like);
+            const searchRegex = new RegExp(search, 'i');
+            filteredShowrooms = showroomsData.filter(s => {
+                return searchRegex.test(s.name) ||
+                       (s.owner_id && (searchRegex.test(s.owner_id.name) || searchRegex.test(s.owner_id.email)));
+            });
         }
 
-        // Count total for pagination
-        const countQuery = `SELECT COUNT(*) as total FROM (${query}) as t`;
-        const [countResult] = await db.execute(countQuery, params);
-        const total = countResult[0].total;
+        const total = filteredShowrooms.length;
+        const paginatedShowrooms = filteredShowrooms.slice(offset, offset + parseInt(limit));
 
-        query += ` ORDER BY s.created_at DESC LIMIT ? OFFSET ?`;
-        params.push(parseInt(limit), offset);
-
-        const [showrooms] = await db.execute(query, params);
+        const formattedShowrooms = paginatedShowrooms.map(s => ({
+            id: s._id,
+            name: s.name,
+            address: s.address,
+            contact_number: s.contact_number,
+            status: s.status,
+            rejection_reason: s.rejection_reason,
+            created_at: s.created_at,
+            owner_id: s.owner_id ? s.owner_id._id : null,
+            owner_name: s.owner_id ? s.owner_id.name : null,
+            owner_email: s.owner_id ? s.owner_id.email : null
+        }));
 
         res.json({
-            showrooms,
+            showrooms: formattedShowrooms,
             pagination: {
                 total,
                 page: parseInt(page),
@@ -58,14 +71,16 @@ export const getAllShowrooms = async (req, res) => {
 // @access  Super Admin
 export const getShowroomById = async (req, res) => {
     try {
-        const [rows] = await db.execute(
-            `SELECT s.*, u.name as owner_name, u.email as owner_email
-             FROM showrooms s JOIN users u ON s.owner_id = u.id
-             WHERE s.id = ?`,
-            [req.params.id]
-        );
-        if (rows.length === 0) return res.status(404).json({ message: 'Showroom not found' });
-        res.json(rows[0]);
+        const showroom = await Showroom.findById(req.params.id).populate('owner_id', 'name email');
+        if (!showroom) return res.status(404).json({ message: 'Showroom not found' });
+        
+        const responseData = {
+            ...showroom.toObject(),
+            owner_name: showroom.owner_id ? showroom.owner_id.name : null,
+            owner_email: showroom.owner_id ? showroom.owner_id.email : null
+        };
+        
+        res.json(responseData);
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
@@ -76,18 +91,19 @@ export const getShowroomById = async (req, res) => {
 // @access  Super Admin
 export const approveShowroom = async (req, res) => {
     try {
-        const [result] = await db.execute(
-            `UPDATE showrooms SET status = 'approved', rejection_reason = NULL WHERE id = ?`,
-            [req.params.id]
-        );
-        if (result.affectedRows === 0) return res.status(404).json({ message: 'Showroom not found' });
+        const showroom = await Showroom.findById(req.params.id);
+        if (!showroom) return res.status(404).json({ message: 'Showroom not found' });
+
+        showroom.status = 'approved';
+        showroom.rejection_reason = undefined;
+        await showroom.save();
 
         // Create notification for the owner
-        const [showroom] = await db.execute('SELECT owner_id, name FROM showrooms WHERE id = ?', [req.params.id]);
-        await db.execute(
-            `INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)`,
-            [showroom[0].owner_id, 'Showroom Approved!', `Your showroom "${showroom[0].name}" has been approved. You can now create bookings.`]
-        );
+        await Notification.create({
+            user_id: showroom.owner_id,
+            title: 'Showroom Approved!',
+            message: `Your showroom "${showroom.name}" has been approved. You can now create bookings.`
+        });
 
         res.json({ message: 'Showroom approved successfully' });
     } catch (error) {
@@ -102,18 +118,19 @@ export const approveShowroom = async (req, res) => {
 export const rejectShowroom = async (req, res) => {
     try {
         const { reason } = req.body;
-        const [result] = await db.execute(
-            `UPDATE showrooms SET status = 'rejected', rejection_reason = ? WHERE id = ?`,
-            [reason || 'No reason provided.', req.params.id]
-        );
-        if (result.affectedRows === 0) return res.status(404).json({ message: 'Showroom not found' });
+        const showroom = await Showroom.findById(req.params.id);
+        if (!showroom) return res.status(404).json({ message: 'Showroom not found' });
+
+        showroom.status = 'rejected';
+        showroom.rejection_reason = reason || 'No reason provided.';
+        await showroom.save();
 
         // Create notification for the owner
-        const [showroom] = await db.execute('SELECT owner_id, name FROM showrooms WHERE id = ?', [req.params.id]);
-        await db.execute(
-            `INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)`,
-            [showroom[0].owner_id, 'Showroom Rejected', `Your showroom "${showroom[0].name}" was rejected. Reason: ${reason || 'No reason provided.'}`]
-        );
+        await Notification.create({
+            user_id: showroom.owner_id,
+            title: 'Showroom Rejected',
+            message: `Your showroom "${showroom.name}" was rejected. Reason: ${showroom.rejection_reason}`
+        });
 
         res.json({ message: 'Showroom rejected' });
     } catch (error) {
@@ -128,11 +145,14 @@ export const rejectShowroom = async (req, res) => {
 export const updateShowroom = async (req, res) => {
     try {
         const { name, address, contact_number } = req.body;
-        const [result] = await db.execute(
-            `UPDATE showrooms SET name = ?, address = ?, contact_number = ? WHERE id = ?`,
-            [name, address, contact_number, req.params.id]
-        );
-        if (result.affectedRows === 0) return res.status(404).json({ message: 'Showroom not found' });
+        const showroom = await Showroom.findById(req.params.id);
+        if (!showroom) return res.status(404).json({ message: 'Showroom not found' });
+
+        showroom.name = name;
+        showroom.address = address;
+        showroom.contact_number = contact_number;
+        await showroom.save();
+
         res.json({ message: 'Showroom updated successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
@@ -144,8 +164,8 @@ export const updateShowroom = async (req, res) => {
 // @access  Super Admin
 export const deleteShowroom = async (req, res) => {
     try {
-        const [result] = await db.execute('DELETE FROM showrooms WHERE id = ?', [req.params.id]);
-        if (result.affectedRows === 0) return res.status(404).json({ message: 'Showroom not found' });
+        const showroom = await Showroom.findByIdAndDelete(req.params.id);
+        if (!showroom) return res.status(404).json({ message: 'Showroom not found' });
         res.json({ message: 'Showroom deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });

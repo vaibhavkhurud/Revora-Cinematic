@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import db from '../config/db.js';
+import User from '../models/User.js';
 
 export const protect = async (req, res, next) => {
     let token;
@@ -16,13 +16,13 @@ export const protect = async (req, res, next) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
             // Get user from the token
-            const [rows] = await db.execute('SELECT id, name, email, role FROM users WHERE id = ?', [decoded.id]);
+            const user = await User.findById(decoded.id).select('-password');
             
-            if (rows.length === 0) {
+            if (!user) {
                 return res.status(401).json({ message: 'User not found' });
             }
 
-            req.user = rows[0];
+            req.user = user;
             next();
         } catch (error) {
             console.error(error);

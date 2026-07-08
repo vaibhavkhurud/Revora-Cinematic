@@ -1,4 +1,5 @@
-import db from '../config/db.js';
+import Package from '../models/Package.js';
+import Booking from '../models/Booking.js';
 
 const parseFeatures = (features) => {
     if (features === undefined || features === null || features === '') return [];
@@ -10,10 +11,9 @@ const parseFeatures = (features) => {
 };
 
 const serializePackage = (pkg) => ({
-    ...pkg,
-    features: Array.isArray(pkg.features) ? pkg.features : (pkg.features ? JSON.parse(pkg.features) : []),
+    ...pkg.toObject(),
     price: Number(pkg.price),
-    is_active: pkg.is_active === 1 || pkg.is_active === true
+    is_active: pkg.is_active === true
 });
 
 const validatePackagePayload = ({ name, price, duration_minutes, features }) => {
@@ -52,30 +52,25 @@ export const getAllPackages = async (req, res) => {
         const { search, is_active, page = 1, limit = 10 } = req.query;
         const offset = (parseInt(page) - 1) * parseInt(limit);
 
-        let query = `SELECT * FROM packages WHERE 1=1`;
-        const params = [];
+        let query = {};
 
         if (is_active !== undefined && is_active !== 'all') {
-            query += ` AND is_active = ?`;
-            params.push(is_active === 'true' ? 1 : 0);
+            query.is_active = is_active === 'true';
         }
 
         if (search) {
-            query += ` AND (name LIKE ? OR description LIKE ?)`;
-            const like = `%${search}%`;
-            params.push(like, like);
+            query.$or = [
+                { name: { $regex: search, $options: 'i' } },
+                { description: { $regex: search, $options: 'i' } }
+            ];
         }
 
-        const countQuery = `SELECT COUNT(*) as total FROM (${query}) as t`;
-        const [countResult] = await db.execute(countQuery, params);
-        const total = countResult[0].total;
+        const total = await Package.countDocuments(query);
+        const packages = await Package.find(query)
+            .sort({ created_at: -1 })
+            .skip(offset)
+            .limit(parseInt(limit));
 
-        query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
-        params.push(parseInt(limit), offset);
-
-        const [packages] = await db.execute(query, params);
-
-        // Parse features JSON
         const parsed = packages.map(serializePackage);
 
         res.json({ packages: parsed, pagination: { total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / parseInt(limit)) } });
@@ -90,9 +85,9 @@ export const getAllPackages = async (req, res) => {
 // @access  Protected
 export const getPackageById = async (req, res) => {
     try {
-        const [rows] = await db.execute('SELECT * FROM packages WHERE id = ?', [req.params.id]);
-        if (rows.length === 0) return res.status(404).json({ message: 'Package not found' });
-        res.json(serializePackage(rows[0]));
+        const pkg = await Package.findById(req.params.id);
+        if (!pkg) return res.status(404).json({ message: 'Package not found' });
+        res.json(serializePackage(pkg));
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
@@ -110,14 +105,19 @@ export const createPackage = async (req, res) => {
 
         const parsedFeatures = parseFeatures(features);
         if (parsedFeatures === null) return res.status(400).json({ message: 'Features must be an array.' });
-        const featuresJson = JSON.stringify(parsedFeatures);
 
-        const [result] = await db.execute(
-            `INSERT INTO packages (name, description, price, duration_minutes, features, is_active) VALUES (?, ?, ?, ?, ?, ?)`,
-            [String(name).trim(), description || null, Number(price), Number(duration_minutes), featuresJson, is_active !== false ? 1 : 0]
-        );
+        const newPackage = new Package({
+            name: String(name).trim(),
+            description: description || null,
+            price: Number(price),
+            duration_minutes: Number(duration_minutes),
+            features: parsedFeatures,
+            is_active: is_active !== false
+        });
 
-        res.status(201).json({ message: 'Package created successfully', id: result.insertId });
+        const savedPackage = await newPackage.save();
+
+        res.status(201).json({ message: 'Package created successfully', id: savedPackage._id });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });
@@ -136,14 +136,19 @@ export const updatePackage = async (req, res) => {
 
         const parsedFeatures = parseFeatures(features);
         if (parsedFeatures === null) return res.status(400).json({ message: 'Features must be an array.' });
-        const featuresJson = JSON.stringify(parsedFeatures);
 
-        const [result] = await db.execute(
-            `UPDATE packages SET name=?, description=?, price=?, duration_minutes=?, features=?, is_active=? WHERE id=?`,
-            [String(name).trim(), description || null, Number(price), Number(duration_minutes), featuresJson, is_active ? 1 : 0, req.params.id]
-        );
+        const pkg = await Package.findById(req.params.id);
+        if (!pkg) return res.status(404).json({ message: 'Package not found' });
 
-        if (result.affectedRows === 0) return res.status(404).json({ message: 'Package not found' });
+        pkg.name = String(name).trim();
+        pkg.description = description || null;
+        pkg.price = Number(price);
+        pkg.duration_minutes = Number(duration_minutes);
+        pkg.features = parsedFeatures;
+        pkg.is_active = is_active ? true : false;
+
+        await pkg.save();
+
         res.json({ message: 'Package updated successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
@@ -155,13 +160,13 @@ export const updatePackage = async (req, res) => {
 // @access  Super Admin
 export const togglePackageStatus = async (req, res) => {
     try {
-        const [rows] = await db.execute('SELECT is_active FROM packages WHERE id = ?', [req.params.id]);
-        if (rows.length === 0) return res.status(404).json({ message: 'Package not found' });
+        const pkg = await Package.findById(req.params.id);
+        if (!pkg) return res.status(404).json({ message: 'Package not found' });
 
-        const newStatus = rows[0].is_active ? 0 : 1;
-        await db.execute('UPDATE packages SET is_active = ? WHERE id = ?', [newStatus, req.params.id]);
+        pkg.is_active = !pkg.is_active;
+        await pkg.save();
 
-        res.json({ message: `Package ${newStatus ? 'activated' : 'deactivated'} successfully`, is_active: !!newStatus });
+        res.json({ message: `Package ${pkg.is_active ? 'activated' : 'deactivated'} successfully`, is_active: pkg.is_active });
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
@@ -172,8 +177,11 @@ export const togglePackageStatus = async (req, res) => {
 // @access  Super Admin
 export const activatePackage = async (req, res) => {
     try {
-        const [result] = await db.execute('UPDATE packages SET is_active = 1 WHERE id = ?', [req.params.id]);
-        if (result.affectedRows === 0) return res.status(404).json({ message: 'Package not found' });
+        const pkg = await Package.findById(req.params.id);
+        if (!pkg) return res.status(404).json({ message: 'Package not found' });
+
+        pkg.is_active = true;
+        await pkg.save();
 
         res.json({ message: 'Package activated successfully', is_active: true });
     } catch (error) {
@@ -187,13 +195,13 @@ export const activatePackage = async (req, res) => {
 export const deletePackage = async (req, res) => {
     try {
         // Prevent deletion if package is used in bookings
-        const [bookings] = await db.execute('SELECT id FROM bookings WHERE package_id = ? LIMIT 1', [req.params.id]);
-        if (bookings.length > 0) {
+        const bookingCount = await Booking.countDocuments({ package_id: req.params.id });
+        if (bookingCount > 0) {
             return res.status(400).json({ message: 'Cannot delete package — it is linked to existing bookings.' });
         }
 
-        const [result] = await db.execute('DELETE FROM packages WHERE id = ?', [req.params.id]);
-        if (result.affectedRows === 0) return res.status(404).json({ message: 'Package not found' });
+        const pkg = await Package.findByIdAndDelete(req.params.id);
+        if (!pkg) return res.status(404).json({ message: 'Package not found' });
         res.json({ message: 'Package deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });

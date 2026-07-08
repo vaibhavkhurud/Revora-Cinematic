@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import db from '../config/db.js';
+import Booking from '../models/Booking.js';
+import BookingImage from '../models/BookingImage.js';
+import Package from '../models/Package.js';
+import Showroom from '../models/Showroom.js';
 
 const requiredFields = [
     'customer_name',
@@ -51,37 +54,13 @@ const validateBookingPayload = (body, files = []) => {
     return null;
 };
 
-const getOwnerShowroom = async (connection, userId) => {
-    const [rows] = await connection.execute(
-        `SELECT id, status
-         FROM showrooms
-         WHERE owner_id = ?
-         LIMIT 1`,
-        [userId]
-    );
-
-    return rows[0] || null;
-};
-
 // @desc    Get active packages for booking form
 // @route   GET /api/bookings/packages
 // @access  Showroom Owner
 export const getBookingPackages = async (req, res) => {
     try {
-        const [packages] = await db.execute(
-            `SELECT id, name, description, price, duration_minutes, features
-             FROM packages
-             WHERE is_active = 1
-             ORDER BY price ASC`
-        );
-
-        res.json({
-            packages: packages.map(pkg => ({
-                ...pkg,
-                price: Number(pkg.price),
-                features: Array.isArray(pkg.features) ? pkg.features : (pkg.features ? JSON.parse(pkg.features) : [])
-            }))
-        });
+        const packages = await Package.find({ is_active: true }).sort({ price: 1 });
+        res.json({ packages });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });
@@ -98,117 +77,82 @@ export const createBooking = async (req, res) => {
         return res.status(400).json({ message: validationError });
     }
 
-    const connection = await db.getConnection();
-
     try {
-        await connection.beginTransaction();
-
-        const showroom = await getOwnerShowroom(connection, req.user.id);
+        const showroom = await Showroom.findOne({ owner_id: req.user._id });
         if (!showroom) {
             removeUploadedFiles(req.files);
-            await connection.rollback();
             return res.status(404).json({ message: 'Showroom profile not found.' });
         }
 
         if (showroom.status !== 'approved') {
             removeUploadedFiles(req.files);
-            await connection.rollback();
             return res.status(403).json({ message: 'Your showroom must be approved before creating bookings.' });
         }
 
-        const [packageRows] = await connection.execute(
-            `SELECT id, name, price, duration_minutes
-             FROM packages
-             WHERE id = ? AND is_active = 1
-             LIMIT 1`,
-            [req.body.package_id]
-        );
-
-        if (packageRows.length === 0) {
+        const packageItem = await Package.findOne({ _id: req.body.package_id, is_active: true });
+        if (!packageItem) {
             removeUploadedFiles(req.files);
-            await connection.rollback();
             return res.status(400).json({ message: 'Selected package is not available.' });
         }
 
-        const packageItem = packageRows[0];
-        const bookingDate = `${req.body.shoot_date} ${req.body.time_slot}:00`;
+        const bookingDate = new Date(`${req.body.shoot_date}T${req.body.time_slot}:00`);
 
-        const [bookingResult] = await connection.execute(
-            `INSERT INTO bookings (
-                showroom_id,
-                package_id,
-                customer_name,
-                customer_mobile,
-                vehicle_brand,
-                vehicle_model,
-                vehicle_type,
-                vehicle_color,
-                registration_number,
-                booking_date,
-                time_slot,
-                notes
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-                showroom.id,
-                packageItem.id,
-                normalizeText(req.body.customer_name),
-                normalizeText(req.body.customer_mobile),
-                normalizeText(req.body.vehicle_brand),
-                normalizeText(req.body.vehicle_model),
-                normalizeText(req.body.vehicle_type),
-                normalizeText(req.body.vehicle_color),
-                normalizeText(req.body.registration_number).toUpperCase(),
-                bookingDate,
-                normalizeText(req.body.time_slot),
-                normalizeText(req.body.notes) || null
-            ]
-        );
+        const newBooking = new Booking({
+            showroom_id: showroom._id,
+            package_id: packageItem._id,
+            customer_name: normalizeText(req.body.customer_name),
+            customer_mobile: normalizeText(req.body.customer_mobile),
+            vehicle_brand: normalizeText(req.body.vehicle_brand),
+            vehicle_model: normalizeText(req.body.vehicle_model),
+            vehicle_type: normalizeText(req.body.vehicle_type),
+            vehicle_color: normalizeText(req.body.vehicle_color),
+            registration_number: normalizeText(req.body.registration_number).toUpperCase(),
+            booking_date: bookingDate,
+            time_slot: normalizeText(req.body.time_slot),
+            notes: normalizeText(req.body.notes) || null
+        });
 
-        const bookingId = bookingResult.insertId;
-        const imageRows = req.files.map(file => [
-            bookingId,
-            `/uploads/bookings/${path.basename(file.filename)}`,
-            req.user.id
-        ]);
+        const savedBooking = await newBooking.save();
 
-        await connection.query(
-            `INSERT INTO booking_images (booking_id, image_url, uploaded_by) VALUES ?`,
-            [imageRows]
-        );
+        const imagePromises = req.files.map(file => {
+            const newImage = new BookingImage({
+                booking_id: savedBooking._id,
+                image_url: `/uploads/bookings/${path.basename(file.filename)}`,
+                uploaded_by: req.user._id
+            });
+            return newImage.save();
+        });
 
-        await connection.commit();
+        const savedImages = await Promise.all(imagePromises);
 
         res.status(201).json({
             message: 'Booking created successfully.',
             booking: {
-                id: bookingId,
-                customer_name: normalizeText(req.body.customer_name),
-                customer_mobile: normalizeText(req.body.customer_mobile),
+                id: savedBooking._id,
+                customer_name: savedBooking.customer_name,
+                customer_mobile: savedBooking.customer_mobile,
                 vehicle: {
-                    brand: normalizeText(req.body.vehicle_brand),
-                    model: normalizeText(req.body.vehicle_model),
-                    type: normalizeText(req.body.vehicle_type),
-                    color: normalizeText(req.body.vehicle_color),
-                    registration_number: normalizeText(req.body.registration_number).toUpperCase()
+                    brand: savedBooking.vehicle_brand,
+                    model: savedBooking.vehicle_model,
+                    type: savedBooking.vehicle_type,
+                    color: savedBooking.vehicle_color,
+                    registration_number: savedBooking.registration_number
                 },
                 package: {
-                    id: packageItem.id,
+                    id: packageItem._id,
                     name: packageItem.name,
-                    price: Number(packageItem.price),
+                    price: packageItem.price,
                     duration_minutes: packageItem.duration_minutes
                 },
-                booking_date: bookingDate,
-                time_slot: normalizeText(req.body.time_slot),
-                status: 'pending',
-                photos: imageRows.map(row => row[1])
+                booking_date: savedBooking.booking_date,
+                time_slot: savedBooking.time_slot,
+                status: savedBooking.status,
+                photos: savedImages.map(img => img.image_url)
             }
         });
     } catch (error) {
-        await connection.rollback();
         removeUploadedFiles(req.files);
         console.error(error);
         res.status(500).json({ message: 'Server Error' });
-    } finally {
-        connection.release();
     }
 };

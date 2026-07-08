@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import db from '../config/db.js';
+import User from '../models/User.js';
+import Showroom from '../models/Showroom.js';
 import crypto from 'crypto';
 
 const generateTokens = (id) => {
@@ -20,53 +21,48 @@ export const registerShowroom = async (req, res) => {
     const { name, email, password, showroomName, contactNumber, address } = req.body;
 
     try {
-        const [existingUsers] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
-        if (existingUsers.length > 0) {
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
             return res.status(400).json({ message: 'User already exists' });
         }
 
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        const connection = await db.getConnection();
-        try {
-            await connection.beginTransaction();
+        const user = new User({
+            name,
+            email,
+            password: hashedPassword,
+            role: 'showroom_owner'
+        });
+        
+        await user.save();
 
-            const [userResult] = await connection.execute(
-                'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
-                [name, email, hashedPassword, 'showroom_owner']
-            );
-            const userId = userResult.insertId;
+        const showroom = new Showroom({
+            owner_id: user._id,
+            name: showroomName,
+            contact_number: contactNumber,
+            address: address
+        });
+        
+        await showroom.save();
 
-            await connection.execute(
-                'INSERT INTO showrooms (owner_id, name, contact_number, address) VALUES (?, ?, ?, ?)',
-                [userId, showroomName, contactNumber, address]
-            );
+        const { accessToken, refreshToken } = generateTokens(user._id);
 
-            await connection.commit();
+        res.cookie('jwt', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV !== 'development',
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
 
-            const { accessToken, refreshToken } = generateTokens(userId);
-
-            res.cookie('jwt', refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV !== 'development',
-                sameSite: 'strict',
-                maxAge: 7 * 24 * 60 * 60 * 1000,
-            });
-
-            res.status(201).json({
-                _id: userId,
-                name,
-                email,
-                role: 'showroom_owner',
-                token: accessToken,
-            });
-        } catch (error) {
-            await connection.rollback();
-            throw error;
-        } finally {
-            connection.release();
-        }
+        res.status(201).json({
+            _id: user._id,
+            name,
+            email,
+            role: 'showroom_owner',
+            token: accessToken,
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });
@@ -80,16 +76,15 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        const [users] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
-        if (users.length === 0) {
+        const user = await User.findOne({ email });
+        if (!user) {
             return res.status(401).json({ message: 'Invalid email or password' });
         }
 
-        const user = users[0];
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (isMatch) {
-            const { accessToken, refreshToken } = generateTokens(user.id);
+            const { accessToken, refreshToken } = generateTokens(user._id);
 
             res.cookie('jwt', refreshToken, {
                 httpOnly: true,
@@ -99,7 +94,7 @@ export const login = async (req, res) => {
             });
 
             res.json({
-                _id: user.id,
+                _id: user._id,
                 name: user.name,
                 email: user.email,
                 role: user.role,
@@ -126,13 +121,13 @@ export const refreshToken = async (req, res) => {
 
     try {
         const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-        const [users] = await db.execute('SELECT * FROM users WHERE id = ?', [decoded.id]);
+        const user = await User.findById(decoded.id);
         
-        if (users.length === 0) {
+        if (!user) {
             return res.status(401).json({ message: 'Invalid refresh token' });
         }
 
-        const accessToken = jwt.sign({ id: users[0].id }, process.env.JWT_SECRET, {
+        const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
             expiresIn: '15m',
         });
 
@@ -160,8 +155,8 @@ export const forgotPassword = async (req, res) => {
     const { email } = req.body;
 
     try {
-        const [users] = await db.execute('SELECT id FROM users WHERE email = ?', [email]);
-        if (users.length === 0) {
+        const user = await User.findOne({ email });
+        if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
@@ -174,9 +169,9 @@ export const forgotPassword = async (req, res) => {
         // Set expiry (10 minutes)
         const expiryDate = new Date(Date.now() + 10 * 60 * 1000);
         
-        await db.execute('UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE email = ?', 
-            [hashedToken, expiryDate, email]
-        );
+        user.reset_token = hashedToken;
+        user.reset_token_expires = expiryDate;
+        await user.save();
 
         // MOCK EMAIL SENDING
         // const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
@@ -198,22 +193,22 @@ export const resetPassword = async (req, res) => {
     try {
         const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
 
-        const [users] = await db.execute(
-            'SELECT id FROM users WHERE reset_token = ? AND reset_token_expires > NOW()',
-            [hashedToken]
-        );
+        const user = await User.findOne({
+            reset_token: hashedToken,
+            reset_token_expires: { $gt: Date.now() }
+        });
 
-        if (users.length === 0) {
+        if (!user) {
             return res.status(400).json({ message: 'Invalid or expired token' });
         }
 
         const salt = await bcrypt.genSalt(10);
         const newPassword = await bcrypt.hash(req.body.password, salt);
 
-        await db.execute(
-            'UPDATE users SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?',
-            [newPassword, users[0].id]
-        );
+        user.password = newPassword;
+        user.reset_token = undefined;
+        user.reset_token_expires = undefined;
+        await user.save();
 
         res.status(200).json({ message: 'Password reset successful' });
     } catch (error) {
