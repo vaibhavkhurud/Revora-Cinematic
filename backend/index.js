@@ -33,7 +33,7 @@ const allowedOrigins = [
 
 
 app.use(cors({
-  origin: 'https://revora-cinematic.vercel.app', // your Vercel domain, no trailing slash
+  origin: 'https://revora-cinematic.vercel.app',
   credentials: true
 }));
 
