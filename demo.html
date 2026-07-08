@@ -1,0 +1,474 @@
+<script>
+    document.title = "<?php echo website_name; ?> - Home"
+</script>
+<style>
+    .limited-lines {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        -webkit-line-clamp: 3;
+        /* Limit to 3 lines */
+    }
+</style>
+<!--  Popup start -->
+<!-- <section>-->
+<!--    <div id="dynamicModal" class="modal fade" ng-app="myApp" ng-controller="homePopupServicesCtrl" ng-init="homePopupInit()" ng-cloak>-->
+<!--        <div class="modal-dialog modal-dialog-centered">-->
+<!--            <div class="modal-content" ng-repeat="dynamic_popup in PopupArrayShowupWise">-->
+<!--                <div class="modal-footer">-->
+<!--                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>-->
+<!--                </div>-->
+<!--                <div class="modal-body">-->
+<!--                    <div class="dynamicModal">-->
+<!--                        <img src="{{base_url + dynamic_popup.dp_popup_images_path}}" class="pb-3 ps-3 pe-3 img-fluid" width="100%" height="262">-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--</section> -->
+
+<!-- Popup end -->
+
+<div class="modal fade modal-enquiryForm" id="admission" tabindex="-1" aria-labelledby="modalEnquiryFormLabel" aria-label="Student Admission Form" aria-hidden="true">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="modalEnquiryFormLabel">ENQUIRY FORM</h4>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" ng-click="admissionFormClear()"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="admision-form" id="quickenquire">
+                        <div class="container">
+                            <form class="admision-form-ui">
+                                <div class="row">
+                                    <div class="col-md-12 form-group">
+                                        <label for="fullName">Name <em>*</em></label>
+                                        <input type="text" id="fullName" name="fullName" class="form-control" ng-model="fullName" onkeyup="onHtmlElementChnage(this)">
+                                    </div>
+                                    <div class="col-md-6 form-group">
+                                        <label for="contact">Contact No <em>*</em></label>
+                                        <input type="number" id="contact" name="contact" class="form-control" ng-model="contact" maxlength="10" onkeyup="onHtmlElementChnage(this)">
+                                    </div>
+                                    <div class="col-md-6 form-group">
+                                        <label for="email">Email Id<em>*</em></label>
+                                        <input type="email" id="email" name="email" class="form-control" ng-model="email" onkeyup="onHtmlElementChnage(this)">
+                                    </div>
+                                    <div class="col-md-12 form-group">
+                                        <label for="course">Any Particular Course</label>
+                                        <input type="text" id="course" name="course" class="form-control" ng-model="course" onkeyup="onHtmlElementChnage(this)">
+                                    </div>
+                                    <div class="col-md-12 form-group">
+                                        <label for="comment">Your Message <em>*</em></label>
+                                        <textarea rows="5" id="comment" name="comment" class="form-control" ng-model="comment" onkeyup="onHtmlElementChnage(this)"></textarea>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="col-md-12">
+                        <input ng-if="!isDisplayProgrss" type="submit" value="submit" class="btn btn-primary button-animation" id="btn-validate" ng-click="admissionEnquiryFormSubmitButton()">
+                        <button style="width: 100%;" class="buttonload btn btn-warning btn-sm" ng-if="isDisplayProgrss"><i class="fa fa-spinner fa-spin"></i>Please wait</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="btnAdmission">
+        <a href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#admission">Admission Enquiry</a>
+    </div>
+
+<!-- Hero Carousel start -->
+<section>
+    <div class="container-fluid slider-back p-0 wow fadeIn" data-wow-delay="0.1s" ng-app="myApp">
+        <div id="header-carousel" class="carousel slide banner-slider carousel-dark" data-ride="carousel" ng-controller="homeSliderServicesCtrl" ng-init="homeSliderInit()" ng-cloak>
+
+            <div class="carousel-inner">
+
+                <div class="carousel-item" ng-repeat="slider in sliderArrayList" ng-class="{active: $index === activeIndex}">
+                    <img class="w-100" src="{{base_url + slider.tsp_image_path}}" alt="{{slider.tsp_caption}}" />
+                    <div class="carousel-caption d-none d-md-block">
+                        <h5 style="color: #fff;">{{slider.tsp_title}}</h5>
+                        <p style="color: #fff;" ng-bind-html="slider.tsp_caption | unsafe">{{slider.tsp_caption}}</p>
+                    </div>
+                </div>
+                <ul class="indicators">
+                    <li ng-repeat="slider in sliderArrayList" ng-class="{active: $index === activeIndex}" ng-click="setActiveSlide($index)"></li>
+                </ul>
+            </div>
+
+            <button class="carousel-control-prev" type="button" data-bs-target="#header-carousel" data-bs-slide="prev" ng-click="prevSlide()">
+                <span class="bi bi-chevron-left" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+            </button>
+
+            <button class="carousel-control-next" type="button" data-bs-target="#header-carousel" data-bs-slide="next" ng-click="nextSlide()">
+                <span class="bi bi-chevron-right" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+            </button>
+        </div>
+    </div>
+</section>
+<!-- Hero Carousel end-->
+<section>
+    <div class="slider-design">
+        <!-- <img class="slider-down-image" src="<?php echo base_url('web-assets/img/home-slider-down.png'); ?>" alt=""> -->
+        <div class="container button-row">
+            <div class="slider-button button-1">
+                <div class="icon-sec">
+                    <img class="slider-icon" src="web-assets/img/admission-1.png" alt="Admission Icon">
+                </div>
+                <span>Admission</span>
+            </div>
+            <div class="slider-button button-2">
+                <div class="icon-sec">
+                    <img class="slider-icon" src="web-assets/img/evalution-icon.svg" alt="Admission Icon">
+                </div>
+                <span>Evaluation</span>
+            </div>
+            <div class="slider-button button-3">
+                <div class="icon-sec">
+                    <img class="slider-icon" src="web-assets/img/exam-guide.svg" alt="Admission Icon">
+                </div>
+                <span>Exam Guide</span>
+            </div>
+            <div class="slider-button button-2">
+                <div class="icon-sec">
+                    <img class="slider-icon" src="web-assets/img/opportunities.png" alt="Admission Icon">
+                </div>
+                <span>Opportunities</span>
+            </div>
+            <div class="slider-button button-1">
+                <div class="icon-sec">
+                    <img class="slider-icon" src="web-assets/img/application-icon.png" alt="Admission Icon">
+                </div>
+                <span>Application form</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Courses -->
+<!-- <section>
+    <div class="container-fluid academic-process py-5">
+        <div class="container">
+            <div class="heading-section mb-4">
+                <p class="about-heading text-center">Academic Process</p>
+                <h2 class="about-section-title text-center">Our Popular <span> courses </span></h2>
+            </div>
+            <div class="courses">
+
+                <div class="academic-card">
+                    <img class="academic-card-img" src="web-assets/img/academic-1.jpg" alt="image">
+                    <div class="academic-card-paragraph">
+
+                        <h2 class="academic-card-title">General Nursing and Midwifery</h2>
+
+                        <p>General nursing Midwifery is a branch of nursing that deals with the care of women during pregnancy, childbirth and the postpartum period</p>
+                    </div>
+                    <div class="counts academic-counts">
+                        <h2 class="display-5 mb-0 count-capacity" data-toggle="counter-up">60</h2>
+                        <p class="m-0 mt-1">intake capacity</p>
+                    </div>
+                </div>
+
+                <div class="academic-card">
+                    <img class="academic-card-img" src="web-assets/img/academic-2.jpg" alt="image">
+                    <div class="academic-card-paragraph">
+
+                        <h2 class="academic-card-title">Auxiliary Nursing and Midwifery</h2>
+
+                        <p> a village-level female health worker in India who is known as the first contact person between the community and the health services</p>
+                    </div>
+                    <div class="counts academic-counts">
+                        <h2 class="display-5 mb-0 count-capacity" data-toggle="counter-up">60</h2>
+                        <p class="m-0 mt-1">intake capacity</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section> -->
+<!-- New   Inspiration section -->
+<section>
+    <div class="container-fluid py-5">
+        <div class="container">
+            <div class="row">
+
+                <!-- Card 1 -->
+                <div class="col-lg-4 mb-4 leader-col">
+                    <div class="card leader-card text-center h-100 shadow-card">
+                        <img class="card-img-top leader-img"
+                            src="web-assets/img/Shreemant Ramraje Naik Nimbalkar.jpg" alt="">
+                        <div class="card-body">
+                            <h5 class="card-title">Hon. Shreemant Ramraje Naik Nimbalkar</h5>
+                            <p class="card-text">(President-Phaltan Education Society, Phaltan)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="col-lg-4 mb-4 leader-col">
+                    <div class="card leader-card text-center h-100 shadow-card">
+                        <img class="card-img-top leader-img"
+                            src="web-assets/img/Shreemant Raghunathraje Naik Nimbalkar.jpg" alt="">
+                        <div class="card-body">
+                            <h5 class="card-title">Hon. Shreemant Raghunathraje Naik Nimbalkar</h5>
+                            <p class="card-text">(Chairman-Phaltan Education Society, Phaltan)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="col-lg-4 mb-4 leader-col">
+                    <div class="card leader-card text-center h-100 shadow-card">
+                        <img class="card-img-top leader-img"
+                            src="web-assets/img/Shreemant Sanjeevraje Naik Nimbalkar.jpg" alt="">
+                        <div class="card-body">
+                            <h5 class="card-title">Hon. Shreemant Sanjeevraje Naik Nimbalkar</h5>
+                            <p class="card-text">(Secretary-Phaltan Education Society, Phaltan)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="col-lg-4 mb-4 leader-col">
+                    <div class="card leader-card text-center h-100 shadow-card">
+                        <img class="card-img-top leader-img"
+                            src="web-assets/img/Chairman.jpg" alt="">
+                        <div class="card-body">
+                            <h5 class="card-title">Dr. P. P. Rajvaidya Sir</h5>
+                            <p class="card-text">(Chairman)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 5 -->
+                <div class="col-lg-4 mb-4 leader-col">
+                    <div class="card leader-card text-center h-100 shadow-card">
+                        <img class="card-img-top leader-img"
+                            src="web-assets/img/Admins.jpeg" alt="">
+                        <div class="card-body">
+                            <h5 class="card-title">Shri. Arvind Nikam</h5>
+                            <p class="card-text">(Admins Officer P.E. Society)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 6 -->
+                <div class="col-lg-4 mb-4 leader-col">
+                    <div class="card leader-card text-center h-100 shadow-card">
+                        <img class="card-img-top leader-img"
+                            src="web-assets/img/Principal.jpeg" alt="">
+                        <div class="card-body">
+                            <h5 class="card-title">Dr. Amol V. Sawant</h5>
+                            <p class="card-text">(Principal - Secretary)</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- News and About -->
+<section class="news-section">
+    <div class="container py-5">
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="heading-section mb-4">
+                    <h2 class="about-section-title">News and<span> Notices</span></h2>
+                </div>
+
+                <div class="news-and-notices" ng-app="myApp" ng-controller="adminNewsListServicesCtrl" ng-init="newsListInit()">
+                    <!-- <h2 class="homePage-sectionHeading">{{ newsListArray.importantNotices[0].tnbt_name }}</h2> -->
+
+                    <div class="news-holder myTicker">
+                        <ul>
+
+                            <li ng-repeat="news in newsListArray.importantNotices">
+                                <h2 class="news-date">{{formatDate(news.nws_created_date)}}</h2>
+                                <div class="news-one">
+                                    <a ng-if="news.nws_link.linkOrPath != 'path' && news.nws_link.linkOrPath != 'link' && !news.nws_new_flag" style="text-decoration: none" href="#">{{ news.nws_title
+                                                    }}</a>
+                                    <a ng-if="news.nws_link.linkOrPath != 'path' && news.nws_link.linkOrPath != 'link' && news.nws_new_flag" style="text-decoration: none;margin-bottom: 0px;align-items: center;" href="#">{{ news.nws_title }}
+                                        <img style="height: 19px;width: 43px;margin-left:5px" src="<?php echo base_url('web-assets/img/new-purple-animation.gif'); ?>" /></a>
+
+                                    <a ng-if="news.nws_link.linkOrPath == 'path' &&  !news.nws_new_flag" style="text-decoration: none" target="{{news.nws_target}}" href="{{ base_url + news.nws_link.actualLink }}">{{ news.nws_title
+                                                    }}</a>
+                                    <a ng-if="news.nws_link.linkOrPath == 'path' && news.nws_new_flag" style="text-decoration: none;margin-bottom: 0px;align-items: center;" target="{{news.nws_target}}" href="{{ base_url + news.nws_link.actualLink }}">{{ news.nws_title
+                                                    }}
+                                        <img style="height: 19px;width: 43px;margin-left:5px" src="<?php echo base_url('web-assets/img/new-purple-animation.gif'); ?>" /></a>
+
+                                    <a ng-if="news.nws_link.linkOrPath == 'link' &&  !news.nws_new_flag" style="text-decoration: none;margin-bottom: 0px;" target="{{news.nws_target}}" href="{{ news.nws_link.actualLink }}">
+                                        {{
+                                                    news.nws_title }}</a>
+
+                                    <a ng-if="news.nws_link.linkOrPath == 'link' && news.nws_new_flag" style="text-decoration: none;margin-bottom: 0px;align-items: center;" target="{{news.nws_target}}" href="{{ news.nws_link.actualLink }}">{{
+                                                    news.nws_title }} <img style="height: 19px;width: 43px;margin-left:5px" src="<?php echo base_url('web-assets/img/new-purple-animation.gif'); ?>" /></a>
+                                </div>
+
+                            </li>
+                        </ul>
+                    </div>
+                    <!-- <a class="read-btn" href="<?php echo base_url('#'); ?>">SEE ALL</a> -->
+
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="heading-section mb-4">
+                    <h2 class="about-section-title">Our <span> Philosophy</span></h2>
+                </div>
+                <p class="philosophy-text">Modern Nursing is a dynamic, therapeutic and educative process in meeting the health needs of the individuals, the family and the community. Nursing is one of the health care agencies in assisting, families and communities to achieve and maintain desirable standards and maintain desirable standards of health.</p>
+                <p class="philosophy-text">The Trust & 'School of Nursing' believes in the concept of health as laid down by the World Health Organization (WHO) i.e. <span>Health is a state of complete physical mental and social well being and not merely the absence of disease or deformity.</span></p>
+                <p class="philosophy-text-1">Since nurses provided and will undoubtedly continue to provide a large part of health care, their training should equip them with professional expertise to meet the <span><a href=""> Read More</a></span>....</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- about section -->
+<section>
+    <div class="container-fluid about-section py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-5">
+                    <div class="heading-section mb-4">
+                        <p class="about-heading">About College</p>
+                        <h2 class="about-section-title">School of Nursing <span> Commitment to Academic Excellence</span></h2>
+                    </div>
+                    <p class="philosophy-text-1">Shrimant Maharanisaheb Laxmidevi Institute of Nursing Sciences is dedicated to fostering excellence in nursing education. With state-of-the-art facilities, experienced faculty, and a hands-on approach to learning, we prepare students to become compassionate and skilled healthcare professionals. Our commitment to academic excellence ensures... <span><a href="">Read More</a></span></p>
+                    <!-- <div class="row quick-li mt-5 pt-3">
+                        <div class="counts count col-lg-4 col-md-4 col-sm-6 pt-2">
+                            <h2 class="display-5 mb-0 student-course" data-toggle="counter-up">2</h2>
+                            <p class="pt-2 pb-0">Course</p>
+                        </div>
+                        <div class="counts count col-lg-4 col-md-4 col-sm-6 pt-2">
+                            <h2 class="display-5 mb-0 college-faculty" data-toggle="counter-up">56</h2>
+                            <p class="pt-2 pb-0">Faculty</p>
+                        </div>
+                        <div class="counts count col-lg-4 col-md-4 col-sm-6 pt-2">
+                            <h2 class="display-5 mb-0 count-placement" data-toggle="counter-up">100</h2>
+                            <p class="pt-2 pb-0">Placement</p>
+                        </div>
+                    </div> -->
+
+                </div>
+
+                <div class="col-lg-7">
+                    <div class="campus px-5">
+                        <img class="campus-img desktop-img" src="https://smlinsphaltan.edu.in/uploads/college.png" alt="Campus">
+                        <!-- <img class="campus-img mobile-img" src="web-assets/img/campus-mobile.png" alt="Campus Mobile"> -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- Why Choose -->
+<section>
+    <div class="container-fluid why-choose-section py-5">
+        <div class="container">
+            <div class="heading-section mb-4">
+                <p class="about-heading text-center">Unique features of college</p>
+                <h2 class="about-section-title text-center">Why choose <span> school of nursing</span></h2>
+            </div>
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="feature">
+                        <div class="why-choose">
+                            <h2 class="why-choose-heading" id="wc-1">Experienced Faculty</h2>
+                            <p>Learn from dedicated professionals with extensive clinical and academic expertise. Their guidance helps bridge the gap between theory and real-world practice.</p>
+                        </div>
+                        <div class="why-choose mt-5">
+                            <h2 class="why-choose-heading" id="wc-3">Hands-On Clinical Training</h2>
+                            <p>Engage in practical learning through simulation labs and real clinical settings. This approach builds confidence and equips you with essential nursing skills.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 mt-4">
+                    <div class="why-choose-img text-center">
+                        <img class="docter-img" src="https://smlinsphaltan.edu.in/uploads/college.png" width="405px" alt="image">
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="feature">
+                        <div class="why-choose">
+                            <h2 class="why-choose-heading" id="wc-2">Accredited Programs</h2>
+                            <p>Benefit from a curriculum that meets high educational standards. Accreditation ensures you receive quality training recognized across the healthcare industry.</p>
+                        </div>
+                        <div class="why-choose mt-5">
+                            <h2 class="why-choose-heading" id="wc-4">Strong Career Opportunities</h2>
+                            <p>Leverage robust career services and industry partnerships. These connections pave the way for diverse job placements and long-term professional growth.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+
+
+<section class="testimonial-bg">
+    <div class="container-fluid testimonial">
+        <div class="container student-testimonial py-5">
+            <div class="heading-section mb-4">
+                <p class="about-heading text-center">Students Testimonials</p>
+                <h2 class="about-section-title text-center">What others <span> think about us </span></h2>
+            </div>
+            <div class="testimonial-college">
+
+                <div class="testimonial-card">
+                    <div class="testimonial-card-paragraph">
+                        <p class="testimonial-card-title">“The institute has provided me with excellent hands-on training, knowledgeable faculty, and a supportive environment. I feel confident in my skills and prepared for a successful career in nursing.”</p>
+                    </div>
+                </div>
+
+                <div class="testimonial-card">
+                    <div class="testimonial-card-paragraph">
+                        <p class="testimonial-card-title">“The modern labs and practical exposure here are outstanding. The faculty is always encouraging, making learning both insightful and inspiring!”</p>
+                    </div>
+                </div>
+
+                <div class="testimonial-card">
+                    <div class="testimonial-card-paragraph">
+                        <p class="testimonial-card-title">“Choosing this institute was the best decision! The well-structured curriculum and clinical practice have shaped me into a skilled and compassionate nurse.”</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var myModal = new bootstrap.Modal(document.getElementById('admission'));
+    myModal.show();
+});
+</script>
+
+
+
+
+<script>
+    //MENU ITEM ACTIVE FOR THE HOME LINK - ID HAS BEEN USED
+    function setActive() {
+        var element = document.getElementById("menuItem_1");
+        element.classList.add('active');
+    }
+    setTimeout(setActive, 1900);
+</script>

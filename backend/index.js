@@ -16,7 +16,8 @@ connectDB();
 const allowedOrigins = [
     process.env.FRONTEND_URL,
     'http://localhost:5173',
-    'http://localhost:3000'
+    'http://localhost:3000',
+    'https://revora-cinematic.vercel.app'
 ].filter(Boolean);
 
 // app.use(cors({
@@ -37,7 +38,13 @@ app.use(cors({
   credentials: true
 }));
 
-app.options('*', cors()); // handle preflight explicitly
+// Handle preflight OPTIONS requests without registering a wildcard route
+app.use((req, res, next) => {
+    if (req.method === 'OPTIONS') {
+        return cors()(req, res, next);
+    }
+    next();
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
