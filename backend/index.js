@@ -30,7 +30,7 @@ const allowedOrigins = [
 //     credentials: true
 // }));
 
-const cors = require('cors');
+
 
 app.use(cors({
   origin: 'https://revora-cinematic.vercel.app', // your Vercel domain, no trailing slash
