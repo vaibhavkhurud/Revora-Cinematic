@@ -19,16 +19,26 @@ const allowedOrigins = [
     'http://localhost:3000'
 ].filter(Boolean);
 
+// app.use(cors({
+//     origin: (origin, callback) => {
+//         if (!origin || allowedOrigins.includes(origin)) {
+//             callback(null, true);
+//         } else {
+//             callback(new Error('Not allowed by CORS'));
+//         }
+//     },
+//     credentials: true
+// }));
+
+const cors = require('cors');
+
 app.use(cors({
-    origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true
+  origin: 'https://revora-cinematic.vercel.app', // your Vercel domain, no trailing slash
+  credentials: true
 }));
+
+app.options('*', cors()); // handle preflight explicitly
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
