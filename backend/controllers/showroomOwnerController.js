@@ -41,7 +41,7 @@ export const getShowroomOwnerDashboard = async (req, res) => {
         let pendingPaymentsCount = 0;
 
         for (const booking of bookings) {
-            if (booking.booking_date >= now && ['pending', 'confirmed'].includes(booking.status)) {
+            if (booking.booking_date >= now && ['pending', 'assigned', 'arrived', 'shooting'].includes(booking.status)) {
                 upcomingShootsCount++;
             }
             if (booking.status === 'completed') {
@@ -96,7 +96,7 @@ export const getShowroomOwnerDashboard = async (req, res) => {
         const upcomingShootsRaw = await Booking.find({
             showroom_id: showroomId,
             booking_date: { $gte: now },
-            status: { $in: ['pending', 'confirmed'] }
+            status: { $in: ['pending', 'assigned', 'arrived', 'shooting'] }
         })
         .populate('package_id', 'name')
         .populate({

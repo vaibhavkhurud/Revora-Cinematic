@@ -35,8 +35,10 @@ const formatTime = (value) => {
 
 const statusStyles = {
     pending: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30',
-    confirmed: 'bg-sky-500/10 text-sky-400 border-sky-500/30',
-    in_progress: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
+    assigned: 'bg-sky-500/10 text-sky-400 border-sky-500/30',
+    arrived: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30',
+    shooting: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
+    editing: 'bg-orange-500/10 text-orange-400 border-orange-500/30',
     completed: 'bg-green-500/10 text-green-400 border-green-500/30',
     cancelled: 'bg-red-500/10 text-red-400 border-red-500/30',
 };

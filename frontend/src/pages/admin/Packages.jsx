@@ -45,14 +45,20 @@ const buildPayload = (form) => ({
 
 const validateForm = (form) => {
     if (!form.name.trim()) return 'Package name is required.';
+    if (form.name.trim().length > 100) return 'Package name cannot exceed 100 characters.';
+    if (form.description.trim().length > 1000) return 'Description cannot exceed 1000 characters.';
     if (!form.price || Number(form.price) <= 0) return 'Price must be greater than zero.';
     if (!form.duration_minutes || Number(form.duration_minutes) <= 0 || !Number.isInteger(Number(form.duration_minutes))) {
         return 'Duration must be a positive whole number.';
     }
+    const longFeature = form.featuresText
+        .split('\n')
+        .some(feature => feature.trim().length > 160);
+    if (longFeature) return 'Each feature must be 160 characters or fewer.';
     return '';
 };
 
-const PackageModal = ({ packageItem, onClose, onSave }) => {
+const PackageModal = ({ packageItem, onClose, onSave, saving }) => {
     const [form, setForm] = useState(packageItem ? toForm(packageItem) : emptyForm);
     const [error, setError] = useState('');
 
@@ -81,6 +87,7 @@ const PackageModal = ({ packageItem, onClose, onSave }) => {
                         <input
                             value={form.name}
                             onChange={e => setForm({ ...form, name: e.target.value })}
+                            maxLength={100}
                             className="w-full bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--text-h)] focus:outline-none focus:border-[var(--accent)]"
                         />
                     </div>
@@ -89,7 +96,7 @@ const PackageModal = ({ packageItem, onClose, onSave }) => {
                         <label className="block text-sm font-medium text-gray-400 mb-1">Price</label>
                         <input
                             type="number"
-                            min="0"
+                            min="1"
                             step="0.01"
                             value={form.price}
                             onChange={e => setForm({ ...form, price: e.target.value })}
@@ -98,7 +105,7 @@ const PackageModal = ({ packageItem, onClose, onSave }) => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Duration</label>
+                        <label className="block text-sm font-medium text-gray-400 mb-1">Duration (minutes)</label>
                         <input
                             type="number"
                             min="1"
@@ -116,6 +123,7 @@ const PackageModal = ({ packageItem, onClose, onSave }) => {
                             value={form.description}
                             onChange={e => setForm({ ...form, description: e.target.value })}
                             rows={3}
+                            maxLength={1000}
                             className="w-full bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--text-h)] focus:outline-none focus:border-[var(--accent)] resize-none"
                         />
                     </div>
@@ -145,9 +153,19 @@ const PackageModal = ({ packageItem, onClose, onSave }) => {
                 {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
 
                 <div className="flex gap-3 mt-5">
-                    <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[var(--glass-border)] text-gray-400 hover:text-white text-sm">Cancel</button>
-                    <button onClick={handleSave} className="flex-1 py-2.5 rounded-xl bg-[var(--accent)] text-black font-semibold text-sm hover:bg-opacity-90">
-                        Save Package
+                    <button
+                        onClick={onClose}
+                        disabled={saving}
+                        className="flex-1 py-2.5 rounded-xl border border-[var(--glass-border)] text-gray-400 hover:text-white text-sm disabled:opacity-50"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="flex-1 py-2.5 rounded-xl bg-[var(--accent)] text-black font-semibold text-sm hover:bg-opacity-90 disabled:opacity-60"
+                    >
+                        {saving ? 'Saving...' : 'Save Package'}
                     </button>
                 </div>
             </div>
@@ -163,6 +181,7 @@ const Packages = () => {
     const [filter, setFilter] = useState('all');
     const [pagination, setPagination] = useState({ total: 0, page: 1, totalPages: 1 });
     const [modalTarget, setModalTarget] = useState(undefined);
+    const [saving, setSaving] = useState(false);
 
     const activeCount = useMemo(() => packages.filter(pkg => pkg.is_active).length, [packages]);
 
@@ -189,6 +208,7 @@ const Packages = () => {
     }, [fetchPackages]);
 
     const handleSave = async (payload) => {
+        setSaving(true);
         try {
             if (modalTarget) {
                 await api.put(`/packages/${modalTarget.id}`, payload);
@@ -201,6 +221,8 @@ const Packages = () => {
             fetchPackages(pagination.page);
         } catch (error) {
             toast(error.response?.data?.message || 'Failed to save package', 'error');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -391,6 +413,7 @@ const Packages = () => {
                     packageItem={modalTarget}
                     onClose={() => setModalTarget(undefined)}
                     onSave={handleSave}
+                    saving={saving}
                 />
             )}
         </div>

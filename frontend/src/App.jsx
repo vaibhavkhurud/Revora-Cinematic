@@ -11,7 +11,10 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import SuperAdminDashboard from './pages/dashboard/SuperAdminDashboard';
 import Showrooms from './pages/admin/Showrooms';
 import Packages from './pages/admin/Packages';
+import Bookings from './pages/admin/Bookings';
 import ShowroomOwnerDashboard from './pages/showroom/ShowroomOwnerDashboard';
+import NewBooking from './pages/showroom/NewBooking';
+import BookingHistory from './pages/showroom/BookingHistory';
 
 const PlaceholderPage = ({ title, description }) => (
   <div className="glass rounded-2xl border border-[var(--glass-border)] p-8 text-[var(--text-color)]">
@@ -53,6 +56,7 @@ function App() {
               <Route path="dashboard" element={<SuperAdminDashboard />} />
               <Route path="showrooms" element={<Showrooms />} />
               <Route path="packages" element={<Packages />} />
+              <Route path="bookings" element={<Bookings />} />
             </Route>
 
             {/* Showroom Owner Routes */}
@@ -66,8 +70,8 @@ function App() {
             >
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<ShowroomOwnerDashboard />} />
-              <Route path="new-booking" element={<PlaceholderPage title="New Booking" description="Create booking workflow coming soon." />} />
-              <Route path="booking-history" element={<PlaceholderPage title="Booking History" description="Review all past and current booking activity." />} />
+              <Route path="new-booking" element={<NewBooking />} />
+              <Route path="booking-history" element={<BookingHistory />} />
               <Route path="payments" element={<PlaceholderPage title="Payments" description="Track pending and completed payments." />} />
               <Route path="downloads" element={<PlaceholderPage title="Downloads" description="Download delivered shoot files and invoices." />} />
               <Route path="profile" element={<PlaceholderPage title="Profile" description="Manage showroom profile and account details." />} />

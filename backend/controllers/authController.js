@@ -4,6 +4,14 @@ import User from '../models/User.js';
 import Showroom from '../models/Showroom.js';
 import crypto from 'crypto';
 
+const isProduction = process.env.NODE_ENV === 'production';
+const getCookieOptions = () => ({
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+});
+
 const generateTokens = (id) => {
     const accessToken = jwt.sign({ id }, process.env.JWT_SECRET, {
         expiresIn: '15m',
@@ -49,12 +57,7 @@ export const registerShowroom = async (req, res) => {
 
         const { accessToken, refreshToken } = generateTokens(user._id);
 
-        res.cookie('jwt', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV !== 'development',
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
+        res.cookie('jwt', refreshToken, getCookieOptions());
 
         res.status(201).json({
             _id: user._id,
@@ -86,12 +89,7 @@ export const login = async (req, res) => {
         if (isMatch) {
             const { accessToken, refreshToken } = generateTokens(user._id);
 
-            res.cookie('jwt', refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV !== 'development',
-                sameSite: 'strict',
-                maxAge: 7 * 24 * 60 * 60 * 1000,
-            });
+            res.cookie('jwt', refreshToken, getCookieOptions());
 
             res.json({
                 _id: user._id,
@@ -142,8 +140,9 @@ export const refreshToken = async (req, res) => {
 // @access  Public
 export const logout = (req, res) => {
     res.cookie('jwt', '', {
-        httpOnly: true,
+        ...getCookieOptions(),
         expires: new Date(0),
+        maxAge: 0,
     });
     res.status(200).json({ message: 'Logged out successfully' });
 };
@@ -173,9 +172,8 @@ export const forgotPassword = async (req, res) => {
         user.reset_token_expires = expiryDate;
         await user.save();
 
-        // MOCK EMAIL SENDING
-        // const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
-        const resetUrl = `https://revora-cinematic.vercel.app/reset-password/${resetToken}`;
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const resetUrl = `${frontendUrl.replace(/\/$/, '')}/reset-password/${resetToken}`;
 
         console.log(`[MOCK EMAIL] To: ${email} | Click here to reset: ${resetUrl}`);
 

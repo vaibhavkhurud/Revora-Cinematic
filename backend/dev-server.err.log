@@ -1,0 +1,54 @@
+file:///D:/rovora/backend/routes/bookingRoutes.js:3
+import { createBooking, getBookingById, getBookingPackages, getBookings } from '../controllers/bookingController.js';
+                        ^^^^^^^^^^^^^^
+SyntaxError: The requested module '../controllers/bookingController.js' does not provide an export named 'getBookingById'
+    at ModuleJob._instantiate (node:internal/modules/esm/module_job:180:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:263:5)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:578:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:116:5)
+
+Node.js v22.14.0
+node:internal/modules/esm/resolve:275
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'D:\rovora\backend\controllers\bookingController.js' imported from D:\rovora\backend\routes\bookingRoutes.js
+    at finalizeResolution (node:internal/modules/esm/resolve:275:11)
+    at moduleResolve (node:internal/modules/esm/resolve:860:10)
+    at defaultResolve (node:internal/modules/esm/resolve:984:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:685:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:634:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:617:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:273:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:135:49) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///D:/rovora/backend/controllers/bookingController.js'
+}
+
+Node.js v22.14.0
+TokenExpiredError: jwt expired
+    at D:\rovora\backend\node_modules\jsonwebtoken\verify.js:190:21
+    at getSecret (D:\rovora\backend\node_modules\jsonwebtoken\verify.js:97:14)
+    at module.exports [as verify] (D:\rovora\backend\node_modules\jsonwebtoken\verify.js:101:10)
+    at protect (file:///D:/rovora/backend/middleware/authMiddleware.js:16:33)
+    at Layer.handleRequest (D:\rovora\backend\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\rovora\backend\node_modules\router\index.js:342:13)
+    at D:\rovora\backend\node_modules\router\index.js:297:9
+    at processParams (D:\rovora\backend\node_modules\router\index.js:582:12)
+    at next (D:\rovora\backend\node_modules\router\index.js:291:5)
+    at Function.handle (D:\rovora\backend\node_modules\router\index.js:186:3) {
+  expiredAt: 2026-07-08T18:18:21.000Z
+}
+TokenExpiredError: jwt expired
+    at D:\rovora\backend\node_modules\jsonwebtoken\verify.js:190:21
+    at getSecret (D:\rovora\backend\node_modules\jsonwebtoken\verify.js:97:14)
+    at module.exports [as verify] (D:\rovora\backend\node_modules\jsonwebtoken\verify.js:101:10)
+    at protect (file:///D:/rovora/backend/middleware/authMiddleware.js:16:33)
+    at Layer.handleRequest (D:\rovora\backend\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\rovora\backend\node_modules\router\index.js:342:13)
+    at D:\rovora\backend\node_modules\router\index.js:297:9
+    at processParams (D:\rovora\backend\node_modules\router\index.js:582:12)
+    at next (D:\rovora\backend\node_modules\router\index.js:291:5)
+    at Function.handle (D:\rovora\backend\node_modules\router\index.js:186:3) {
+  expiredAt: 2026-07-08T18:20:49.000Z
+}

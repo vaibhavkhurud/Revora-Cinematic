@@ -1,6 +1,18 @@
 import express from 'express';
 import multer from 'multer';
-import { createBooking, getBookingPackages } from '../controllers/bookingController.js';
+import {
+    assignVideographer,
+    createBooking,
+    deleteAdminBooking,
+    getAdminBookingById,
+    getAdminBookings,
+    getAssignableVideographers,
+    getBookingById,
+    getBookingPackages,
+    getBookings,
+    updateAdminBooking,
+    updateBookingStatus
+} from '../controllers/bookingController.js';
 import { protect, authorize } from '../middleware/authMiddleware.js';
 import { uploadVehiclePhotos } from '../middleware/uploadMiddleware.js';
 
@@ -25,9 +37,19 @@ const handleVehiclePhotoUpload = (req, res, next) => {
 };
 
 router.use(protect);
-router.use(authorize('showroom_owner'));
 
+router.get('/admin/videographers', authorize('super_admin'), getAssignableVideographers);
+router.get('/admin', authorize('super_admin'), getAdminBookings);
+router.get('/admin/:id', authorize('super_admin'), getAdminBookingById);
+router.put('/admin/:id', authorize('super_admin'), updateAdminBooking);
+router.patch('/admin/:id/assign', authorize('super_admin'), assignVideographer);
+router.patch('/admin/:id/status', authorize('super_admin'), updateBookingStatus);
+router.delete('/admin/:id', authorize('super_admin'), deleteAdminBooking);
+
+router.use(authorize('showroom_owner'));
 router.get('/packages', getBookingPackages);
+router.get('/', getBookings);
+router.get('/:id', getBookingById);
 router.post('/', handleVehiclePhotoUpload, createBooking);
 
 export default router;
