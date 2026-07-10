@@ -4,7 +4,7 @@ import {
     CalendarCheck,
     Clock,
     CheckCircle,
-    DollarSign,
+    IndianRupee,
     Video,
     TrendingUp,
     TrendingDown,
@@ -220,7 +220,7 @@ const SuperAdminDashboard = () => {
                     title="Total Revenue"
                     value={overview?.totalRevenue || 0}
                     prefix="₹"
-                    icon={DollarSign}
+                    icon={IndianRupee}
                     colorClass="bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20"
                 />
             </div>

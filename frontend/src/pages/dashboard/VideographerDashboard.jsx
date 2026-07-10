@@ -16,7 +16,7 @@ import {
     ThumbsDown,
     X,
     Bell,
-    DollarSign
+    IndianRupee
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
@@ -162,7 +162,7 @@ const AwaitingResponseCard = ({ shoot, onRespond, onViewDetails }) => {
                     <div>
                         <p className="text-gray-400 text-sm">{shoot.customer}</p>
                         <p className="text-xs text-cyan-400 font-semibold mt-1 flex items-center gap-1">
-                            <DollarSign size={12} />
+                            <IndianRupee size={12} />
                             {shoot.package_name} — ₹{shoot.package_price?.toLocaleString()}
                         </p>
                     </div>

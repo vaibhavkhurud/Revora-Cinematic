@@ -20,7 +20,7 @@ import {
     Users,
     CheckCircle,
     Clock,
-    DollarSign,
+    IndianRupee,
     Loader
 } from 'lucide-react';
 import api from '../../services/api';
@@ -264,7 +264,7 @@ const Analytics = () => {
                     value={overview?.totalRevenue || 0}
                     prefix="₹"
                     sub={`₹${(overview?.monthRevenue || 0).toLocaleString()} this month`}
-                    icon={DollarSign}
+                    icon={IndianRupee}
                     iconClass="bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20"
                 />
                 <StatCard
