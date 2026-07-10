@@ -6,6 +6,7 @@ import {
     deleteAdminBooking,
     getAdminBookingById,
     getAdminBookings,
+    getAdminEarnings,
     getAssignableVideographers,
     getBookingById,
     getBookingPackages,
@@ -39,6 +40,7 @@ const handleVehiclePhotoUpload = (req, res, next) => {
 router.use(protect);
 
 router.get('/admin/videographers', authorize('super_admin'), getAssignableVideographers);
+router.get('/admin/earnings', authorize('super_admin'), getAdminEarnings);
 router.get('/admin', authorize('super_admin'), getAdminBookings);
 router.get('/admin/:id', authorize('super_admin'), getAdminBookingById);
 router.put('/admin/:id', authorize('super_admin'), updateAdminBooking);

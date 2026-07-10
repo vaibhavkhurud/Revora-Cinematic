@@ -6,6 +6,8 @@ import BookingImage from '../models/BookingImage.js';
 import Package from '../models/Package.js';
 import Showroom from '../models/Showroom.js';
 import Videographer from '../models/Videographer.js';
+import Notification from '../models/Notification.js';
+import User from '../models/User.js';
 
 const MAX_LIMIT = 50;
 const validStatuses = ['pending', 'assigned', 'arrived', 'shooting', 'editing', 'completed', 'cancelled'];
@@ -379,6 +381,21 @@ export const createBooking = async (req, res) => {
         await savedBooking.populate('package_id', 'name description price duration_minutes features');
         await savedBooking.populate('showroom_id', 'name address contact_number');
 
+        // Notify Super Admins of new booking
+        try {
+            const superAdmins = await User.find({ role: 'super_admin' });
+            const adminNotifications = superAdmins.map(admin => ({
+                user_id: admin._id,
+                title: '📋 New Booking Created',
+                message: `${req.user.name} created a booking for ${savedBooking.vehicle_brand} ${savedBooking.vehicle_model} (${savedBooking.registration_number}).`
+            }));
+            if (adminNotifications.length > 0) {
+                await Notification.insertMany(adminNotifications);
+            }
+        } catch (notifErr) {
+            console.error('Notification error:', notifErr);
+        }
+
         res.status(201).json({
             message: 'Booking created successfully.',
             booking: serializeBooking(savedBooking, savedImages)
@@ -581,10 +598,21 @@ export const assignVideographer = async (req, res) => {
         if (booking.status === 'pending') {
             booking.status = 'assigned';
         }
+        // Reset response so new videographer must accept/reject
+        booking.videographer_response = 'pending';
+        booking.videographer_response_note = null;
         await booking.save();
 
         videographer.status = 'assigned';
         await videographer.save();
+
+        // Create notification for the videographer
+        const notification = new Notification({
+            user_id: videographer.user_id,
+            title: 'New Shoot Assigned',
+            message: `You have been assigned to a new shoot for ${booking.vehicle_brand} ${booking.vehicle_model} on ${new Date(booking.booking_date).toLocaleDateString()}.`
+        });
+        await notification.save();
 
         const populated = await populateBookingQuery(Booking.findById(booking._id));
         res.json({ message: 'Videographer assigned successfully.', booking: serializeBooking(populated) });
@@ -625,6 +653,85 @@ export const updateBookingStatus = async (req, res) => {
 
         const populated = await populateBookingQuery(Booking.findById(booking._id));
         res.json({ message: 'Booking status updated successfully.', booking: serializeBooking(populated) });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+// @desc    Get admin earnings overview
+// @route   GET /api/bookings/admin/earnings
+// @access  Super Admin
+export const getAdminEarnings = async (req, res) => {
+    try {
+        const completedBookings = await Booking.find({ status: 'completed' })
+            .populate('package_id', 'name price')
+            .populate({
+                path: 'videographer_id',
+                select: 'user_id',
+                populate: { path: 'user_id', select: 'name email' }
+            })
+            .sort({ updated_at: -1 });
+
+        let totalRevenue = 0;
+        const packageBreakdown = {};
+        const videographerBreakdown = {};
+
+        // Monthly revenue (last 12 months)
+        const monthlyRevenue = {};
+
+        completedBookings.forEach(booking => {
+            const price = booking.package_id?.price || 0;
+            const packageName = booking.package_id?.name || 'Unknown Package';
+            const packageId = booking.package_id?._id?.toString() || 'unknown';
+
+            totalRevenue += price;
+
+            // Package breakdown
+            if (!packageBreakdown[packageId]) {
+                packageBreakdown[packageId] = {
+                    package_id: packageId,
+                    package_name: packageName,
+                    count: 0,
+                    price_per_shoot: price,
+                    total: 0
+                };
+            }
+            packageBreakdown[packageId].count++;
+            packageBreakdown[packageId].total += price;
+
+            // Videographer breakdown
+            if (booking.videographer_id) {
+                const vidId = booking.videographer_id._id.toString();
+                const vidName = booking.videographer_id.user_id?.name || 'Unknown';
+                const vidEmail = booking.videographer_id.user_id?.email || '';
+                if (!videographerBreakdown[vidId]) {
+                    videographerBreakdown[vidId] = {
+                        videographer_id: vidId,
+                        name: vidName,
+                        email: vidEmail,
+                        completed_shoots: 0,
+                        total_earnings: 0
+                    };
+                }
+                videographerBreakdown[vidId].completed_shoots++;
+                videographerBreakdown[vidId].total_earnings += price;
+            }
+
+            // Monthly revenue
+            const date = booking.updated_at || booking.created_at;
+            if (date) {
+                const monthKey = new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + price;
+            }
+        });
+
+        res.json({
+            total_revenue: totalRevenue,
+            total_completed_shoots: completedBookings.length,
+            package_breakdown: Object.values(packageBreakdown).sort((a, b) => b.total - a.total),
+            videographer_breakdown: Object.values(videographerBreakdown).sort((a, b) => b.total_earnings - a.total_earnings),
+            monthly_revenue: monthlyRevenue
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });

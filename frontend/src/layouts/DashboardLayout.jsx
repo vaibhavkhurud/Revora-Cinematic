@@ -1,8 +1,9 @@
 import React, { useContext, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
+import NotificationBell from '../components/NotificationBell';
 import { AuthContext } from '../context/AuthContext';
-import { Menu, User, Bell } from 'lucide-react';
+import { Menu, User } from 'lucide-react';
 
 const DashboardLayout = () => {
     const { user } = useContext(AuthContext);
@@ -18,7 +19,7 @@ const DashboardLayout = () => {
                 <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-[var(--accent)] opacity-[0.03] rounded-full blur-[120px] pointer-events-none"></div>
                 
                 {/* Header */}
-                <header className="h-20 glass border-b border-[var(--glass-border)] flex items-center justify-between px-6 z-10 shrink-0">
+                <header className="h-20 glass border-b border-[var(--glass-border)] flex items-center justify-between px-6 z-40 shrink-0">
                     <div className="flex items-center gap-4">
                         <button onClick={() => setSidebarOpen(true)} className="md:hidden text-[var(--text-color)] hover:text-[var(--accent)]">
                             <Menu size={24} />
@@ -28,11 +29,8 @@ const DashboardLayout = () => {
                         </h2>
                     </div>
 
-                    <div className="flex items-center gap-6">
-                        <button className="relative text-gray-400 hover:text-white transition-colors">
-                            <Bell size={20} />
-                            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-[var(--bg-color)]"></span>
-                        </button>
+                    <div className="flex items-center gap-4">
+                        <NotificationBell />
                         
                         <div className="flex items-center gap-3">
                             <div className="text-right hidden sm:block">
@@ -47,7 +45,7 @@ const DashboardLayout = () => {
                 </header>
 
                 {/* Main Content Scrollable Area */}
-                <main className="flex-1 overflow-y-auto p-6 z-10">
+                <main className="flex-1 overflow-y-auto p-6">
                     <Outlet />
                 </main>
             </div>

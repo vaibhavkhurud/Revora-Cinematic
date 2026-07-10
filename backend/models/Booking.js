@@ -77,6 +77,17 @@ const bookingSchema = new mongoose.Schema({
         type: String,
         trim: true,
         maxlength: 1000
+    },
+    videographer_response: {
+        type: String,
+        enum: ['pending', 'accepted', 'rejected'],
+        default: 'pending'
+    },
+    videographer_response_note: {
+        type: String,
+        trim: true,
+        maxlength: 500,
+        default: null
     }
 }, { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } });
 

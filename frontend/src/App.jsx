@@ -12,21 +12,22 @@ import SuperAdminDashboard from './pages/dashboard/SuperAdminDashboard';
 import Showrooms from './pages/admin/Showrooms';
 import Packages from './pages/admin/Packages';
 import Bookings from './pages/admin/Bookings';
+import Videographers from './pages/admin/Videographers';
+import Analytics from './pages/admin/Analytics';
 import ShowroomOwnerDashboard from './pages/showroom/ShowroomOwnerDashboard';
 import NewBooking from './pages/showroom/NewBooking';
 import BookingHistory from './pages/showroom/BookingHistory';
+import VideographerDashboard from './pages/dashboard/VideographerDashboard';
+import ShootDetails from './pages/dashboard/ShootDetails';
+import Attendance from './pages/dashboard/Attendance';
+import Earnings from './pages/dashboard/Earnings';
+import AdminEarnings from './pages/admin/AdminEarnings';
+import Notifications from './pages/Notifications';
 
 const PlaceholderPage = ({ title, description }) => (
   <div className="glass rounded-2xl border border-[var(--glass-border)] p-8 text-[var(--text-color)]">
-    <h1 className="text-2xl font-bold text-[var(--text-h)]">{title}</h1>
+    <h1 className="text-2xl font-bold text-[var(--text-color)]">{title}</h1>
     <p className="text-gray-400 mt-2">{description}</p>
-  </div>
-);
-
-const VideographerDashboard = () => (
-  <div className="p-8 text-[var(--text-color)]">
-    <h1 className="text-2xl font-bold">Videographer Dashboard</h1>
-    <p className="text-gray-400 mt-2">Coming soon...</p>
   </div>
 );
 
@@ -57,6 +58,9 @@ function App() {
               <Route path="showrooms" element={<Showrooms />} />
               <Route path="packages" element={<Packages />} />
               <Route path="bookings" element={<Bookings />} />
+              <Route path="videographers" element={<Videographers />} />
+              <Route path="analytics" element={<Analytics />} />
+              <Route path="earnings" element={<AdminEarnings />} />
             </Route>
 
             {/* Showroom Owner Routes */}
@@ -88,6 +92,21 @@ function App() {
             >
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<VideographerDashboard />} />
+              <Route path="attendance" element={<Attendance />} />
+              <Route path="earnings" element={<Earnings />} />
+              <Route path="shoots/:id" element={<ShootDetails />} />
+            </Route>
+
+            {/* Shared Notification Route - accessible by all roles */}
+            <Route
+              path="/notifications"
+              element={
+                <ProtectedRoute allowedRoles={['super_admin', 'showroom_owner', 'videographer']}>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Notifications />} />
             </Route>
 
             {/* Default */}

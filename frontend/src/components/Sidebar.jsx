@@ -15,7 +15,9 @@ import {
   CreditCard,
   Download,
   UserCircle,
-  X
+  X,
+  Clock,
+  DollarSign
 } from 'lucide-react';
 import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
@@ -28,7 +30,8 @@ const navByRole = {
         { name: 'Videographers', path: '/admin/videographers',   icon: Video },
         { name: 'Packages',      path: '/admin/packages',        icon: Package },
         { name: 'Analytics',     path: '/admin/analytics',       icon: LineChart },
-        { name: 'Notifications', path: '/admin/notifications',   icon: Bell },
+        { name: 'Earnings',      path: '/admin/earnings',        icon: DollarSign },
+        { name: 'Notifications', path: '/notifications',   icon: Bell },
         { name: 'Settings',      path: '/admin/settings',        icon: Settings },
     ],
     showroom_owner: [
@@ -41,6 +44,8 @@ const navByRole = {
     ],
     videographer: [
         { name: 'Dashboard', path: '/videographer/dashboard', icon: LayoutDashboard },
+        { name: 'Attendance', path: '/videographer/attendance', icon: Clock },
+        { name: 'Earnings',  path: '/videographer/earnings',  icon: DollarSign },
         { name: 'Shoots',    path: '/videographer/shoots',    icon: Video },
         { name: 'Profile',   path: '/videographer/profile',   icon: UserCircle },
     ],

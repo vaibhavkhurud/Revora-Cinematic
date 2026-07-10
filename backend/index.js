@@ -8,6 +8,11 @@ import showroomRoutes from './routes/showroomRoutes.js';
 import packageRoutes from './routes/packageRoutes.js';
 import showroomOwnerRoutes from './routes/showroomOwnerRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
+import videographerRoutes from './routes/videographerRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import attendanceRoutes from './routes/attendanceRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
 import connectDB from './config/db.js';
 
 dotenv.config();
@@ -18,13 +23,16 @@ connectDB();
 const allowedOrigins = [
     process.env.FRONTEND_URL,
     'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
     'http://localhost:3000',
     'https://revora-cinematic.vercel.app'
 ].filter(Boolean);
 
 const corsOptions = {
     origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
+        // Allow any localhost origin in development
+        if (!origin || allowedOrigins.includes(origin) || /^http:\/\/localhost:\d+$/.test(origin)) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
@@ -54,6 +62,11 @@ app.use('/api/showrooms', showroomRoutes);
 app.use('/api/packages', packageRoutes);
 app.use('/api/showroom-owner', showroomOwnerRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/videographer', videographerRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 app.get('/', (req, res) => {
     res.send('Revora Cinematic API is running...');
