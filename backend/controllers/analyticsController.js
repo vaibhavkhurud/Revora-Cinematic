@@ -53,16 +53,34 @@ export const getOverview = async (req, res) => {
             Booking.countDocuments({ status: { $in: ['pending', 'assigned'] } })
         ]);
 
-        // Revenue from completed payments
-        const revenueAgg = await Payment.aggregate([
+        // Revenue from completed bookings (via joined Package price)
+        const revenueAgg = await Booking.aggregate([
             { $match: { status: 'completed' } },
-            { $group: { _id: null, total: { $sum: '$amount' } } }
+            {
+                $lookup: {
+                    from: 'packages',
+                    localField: 'package_id',
+                    foreignField: '_id',
+                    as: 'package'
+                }
+            },
+            { $unwind: '$package' },
+            { $group: { _id: null, total: { $sum: '$package.price' } } }
         ]);
         const totalRevenue = revenueAgg[0]?.total || 0;
 
-        const monthRevenueAgg = await Payment.aggregate([
-            { $match: { status: 'completed', paid_at: { $gte: startOfMonth } } },
-            { $group: { _id: null, total: { $sum: '$amount' } } }
+        const monthRevenueAgg = await Booking.aggregate([
+            { $match: { status: 'completed', updated_at: { $gte: startOfMonth } } },
+            {
+                $lookup: {
+                    from: 'packages',
+                    localField: 'package_id',
+                    foreignField: '_id',
+                    as: 'package'
+                }
+            },
+            { $unwind: '$package' },
+            { $group: { _id: null, total: { $sum: '$package.price' } } }
         ]);
         const monthRevenue = monthRevenueAgg[0]?.total || 0;
 
@@ -98,9 +116,18 @@ export const getMonthlyData = async (req, res) => {
 
         const revenueCounts = await Promise.all(
             months.map(async m => {
-                const agg = await Payment.aggregate([
-                    { $match: { status: 'completed', paid_at: { $gte: m.start, $lte: m.end } } },
-                    { $group: { _id: null, total: { $sum: '$amount' } } }
+                const agg = await Booking.aggregate([
+                    { $match: { status: 'completed', updated_at: { $gte: m.start, $lte: m.end } } },
+                    {
+                        $lookup: {
+                            from: 'packages',
+                            localField: 'package_id',
+                            foreignField: '_id',
+                            as: 'package'
+                        }
+                    },
+                    { $unwind: '$package' },
+                    { $group: { _id: null, total: { $sum: '$package.price' } } }
                 ]);
                 return agg[0]?.total || 0;
             })
