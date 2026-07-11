@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
+import { useToast } from '../../components/Toast';
 
 const ForgotPassword = () => {
+    const { toast } = useToast();
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
@@ -16,8 +18,11 @@ const ForgotPassword = () => {
         try {
             const res = await api.post('/auth/forgot-password', { email });
             setMessage(res.data.message);
+            toast(res.data.message || 'Reset link sent successfully', 'success');
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to send reset link');
+            const errorMsg = err.response?.data?.message || 'Failed to send reset link';
+            setError(errorMsg);
+            toast(errorMsg, 'error');
         } finally {
             setLoading(false);
         }

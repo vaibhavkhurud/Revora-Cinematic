@@ -5,6 +5,7 @@ import { ToastProvider } from './components/Toast';
 import AuthLayout from './layouts/AuthLayout';
 import DashboardLayout from './layouts/DashboardLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import ShowroomApprovalCheck from './components/ShowroomApprovalCheck';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
@@ -13,6 +14,7 @@ import Showrooms from './pages/admin/Showrooms';
 import Packages from './pages/admin/Packages';
 import Bookings from './pages/admin/Bookings';
 import Videographers from './pages/admin/Videographers';
+import VideographerReport from './pages/admin/VideographerReport';
 import Analytics from './pages/admin/Analytics';
 import ShowroomOwnerDashboard from './pages/showroom/ShowroomOwnerDashboard';
 import NewBooking from './pages/showroom/NewBooking';
@@ -23,6 +25,8 @@ import Attendance from './pages/dashboard/Attendance';
 import Earnings from './pages/dashboard/Earnings';
 import AdminEarnings from './pages/admin/AdminEarnings';
 import Notifications from './pages/Notifications';
+import NotFound from './pages/NotFound';
+
 
 const PlaceholderPage = ({ title, description }) => (
   <div className="glass rounded-2xl border border-[var(--glass-border)] p-8 text-[var(--text-color)]">
@@ -59,6 +63,7 @@ function App() {
               <Route path="packages" element={<Packages />} />
               <Route path="bookings" element={<Bookings />} />
               <Route path="videographers" element={<Videographers />} />
+              <Route path="videographers/:id" element={<VideographerReport />} />
               <Route path="analytics" element={<Analytics />} />
               <Route path="earnings" element={<AdminEarnings />} />
             </Route>
@@ -74,11 +79,14 @@ function App() {
             >
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<ShowroomOwnerDashboard />} />
-              <Route path="new-booking" element={<NewBooking />} />
-              <Route path="booking-history" element={<BookingHistory />} />
-              <Route path="payments" element={<PlaceholderPage title="Payments" description="Track pending and completed payments." />} />
-              <Route path="downloads" element={<PlaceholderPage title="Downloads" description="Download delivered shoot files and invoices." />} />
               <Route path="profile" element={<PlaceholderPage title="Profile" description="Manage showroom profile and account details." />} />
+              
+              <Route element={<ShowroomApprovalCheck />}>
+                <Route path="new-booking" element={<NewBooking />} />
+                <Route path="booking-history" element={<BookingHistory />} />
+                <Route path="payments" element={<PlaceholderPage title="Payments" description="Track pending and completed payments." />} />
+                <Route path="downloads" element={<PlaceholderPage title="Downloads" description="Download delivered shoot files and invoices." />} />
+              </Route>
             </Route>
 
             {/* Videographer Routes */}
@@ -110,7 +118,8 @@ function App() {
             </Route>
 
             {/* Default */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
       </ToastProvider>

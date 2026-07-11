@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Search, Video, User, Mail, Phone, Copy, CheckCircle, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { PlusCircle, Search, Video, User, Mail, Phone, Copy, CheckCircle, X, FileText } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../components/Toast';
 
@@ -16,6 +17,7 @@ const StatusBadge = ({ status }) => (
 );
 
 const Videographers = () => {
+    const navigate = useNavigate();
     const { toast } = useToast();
     const [videographers, setVideographers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -65,6 +67,22 @@ const Videographers = () => {
             toast(error.response?.data?.message || 'Failed to add videographer', 'error');
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleResetPassword = async (v) => {
+        if (!window.confirm(`Are you sure you want to reset the password for ${v.name}?`)) return;
+        try {
+            const res = await api.put(`/admin/videographers/${v.id}/reset-password`);
+            toast('Password reset successfully', 'success');
+            setNewCredentials({
+                email: v.email,
+                generatedPassword: res.data.newPassword,
+                isReset: true
+            });
+            setIsAddModalOpen(true);
+        } catch (error) {
+            toast(error.response?.data?.message || 'Failed to reset password', 'error');
         }
     };
 
@@ -148,7 +166,7 @@ const Videographers = () => {
                                                 </div>
                                                 <div>
                                                     <p className="font-semibold text-[var(--text-color)]">{v.name}</p>
-                                                    <p className="text-xs text-gray-500">Joined {new Date(v.joined).toLocaleDateString()}</p>
+                                                    <p className="text-xs text-gray-500 font-mono mt-0.5">ID: {v.id}</p>
                                                 </div>
                                             </div>
                                         </td>
@@ -165,8 +183,12 @@ const Videographers = () => {
                                         <td className="px-6 py-4">
                                             <StatusBadge status={v.status} />
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-6 py-4 text-right space-x-3">
+                                            <button onClick={() => navigate(`/admin/videographers/${v.id}`)} className="text-sm text-green-400 hover:underline inline-flex items-center gap-1">
+                                                <FileText size={14} /> Report
+                                            </button>
                                             <button className="text-sm text-[var(--accent)] hover:underline">Edit</button>
+                                            <button onClick={() => handleResetPassword(v)} className="text-sm text-yellow-400 hover:underline">Reset Pass</button>
                                         </td>
                                     </tr>
                                 ))
@@ -187,7 +209,9 @@ const Videographers = () => {
                             <X size={20} />
                         </button>
                         
-                        <h2 className="text-2xl font-bold text-[var(--text-color)] mb-6">Add Videographer</h2>
+                        <h2 className="text-2xl font-bold text-[var(--text-color)] mb-6">
+                            {newCredentials?.isReset ? 'Credentials' : 'Add Videographer'}
+                        </h2>
 
                         {!newCredentials ? (
                             <form onSubmit={handleAddVideographer} className="space-y-4">
@@ -243,7 +267,9 @@ const Videographers = () => {
                                     <CheckCircle size={32} />
                                 </div>
                                 <div>
-                                    <h3 className="text-xl font-bold text-white mb-2">Account Created!</h3>
+                                    <h3 className="text-xl font-bold text-white mb-2">
+                                        {newCredentials?.isReset ? 'Password Reset!' : 'Account Created!'}
+                                    </h3>
                                     <p className="text-gray-400 text-sm">
                                         Please share these credentials with the videographer securely. They will need this password to log in.
                                     </p>

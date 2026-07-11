@@ -129,3 +129,19 @@ export const getShowroomOwnerDashboard = async (req, res) => {
         res.status(500).json({ message: 'Server Error' });
     }
 };
+
+// @desc    Get showroom owner profile
+// @route   GET /api/showroom-owner/profile
+// @access  Showroom Owner
+export const getShowroomProfile = async (req, res) => {
+    try {
+        const showroom = await Showroom.findOne({ owner_id: req.user._id });
+        if (!showroom) {
+            return res.status(404).json({ message: 'Showroom profile not found' });
+        }
+        res.json({ showroom });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
