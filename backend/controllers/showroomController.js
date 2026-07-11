@@ -42,6 +42,7 @@ export const getAllShowrooms = async (req, res) => {
             id: s._id,
             name: s.name,
             address: s.address,
+            map_link: s.map_link,
             contact_number: s.contact_number,
             status: s.status,
             rejection_reason: s.rejection_reason,
@@ -144,13 +145,14 @@ export const rejectShowroom = async (req, res) => {
 // @access  Super Admin
 export const updateShowroom = async (req, res) => {
     try {
-        const { name, address, contact_number } = req.body;
+        const { name, address, contact_number, map_link } = req.body;
         const showroom = await Showroom.findById(req.params.id);
         if (!showroom) return res.status(404).json({ message: 'Showroom not found' });
 
         showroom.name = name;
         showroom.address = address;
         showroom.contact_number = contact_number;
+        showroom.map_link = map_link || null;
         await showroom.save();
 
         res.json({ message: 'Showroom updated successfully' });

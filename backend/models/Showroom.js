@@ -14,6 +14,10 @@ const showroomSchema = new mongoose.Schema({
     address: {
         type: String
     },
+    map_link: {
+        type: String,
+        default: null
+    },
     contact_number: {
         type: String,
         maxlength: 20

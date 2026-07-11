@@ -26,6 +26,9 @@ import Earnings from './pages/dashboard/Earnings';
 import AdminEarnings from './pages/admin/AdminEarnings';
 import Notifications from './pages/Notifications';
 import NotFound from './pages/NotFound';
+import ShowroomProfile from './pages/showroom/Profile';
+import LandingPage from './pages/LandingPage';
+import PublicOnlyRoute from './components/PublicOnlyRoute';
 
 
 const PlaceholderPage = ({ title, description }) => (
@@ -43,9 +46,9 @@ function App() {
           <Routes>
             {/* Public Auth Routes */}
             <Route element={<AuthLayout />}>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
+              <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
+              <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPassword /></PublicOnlyRoute>} />
             </Route>
 
             {/* Super Admin Routes */}
@@ -79,7 +82,7 @@ function App() {
             >
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<ShowroomOwnerDashboard />} />
-              <Route path="profile" element={<PlaceholderPage title="Profile" description="Manage showroom profile and account details." />} />
+              <Route path="profile" element={<ShowroomProfile />} />
               
               <Route element={<ShowroomApprovalCheck />}>
                 <Route path="new-booking" element={<NewBooking />} />
@@ -118,7 +121,7 @@ function App() {
             </Route>
 
             {/* Default */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/" element={<PublicOnlyRoute><LandingPage /></PublicOnlyRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

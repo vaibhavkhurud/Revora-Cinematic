@@ -6,9 +6,13 @@ import {
     Film,
     History,
     MapPin,
+    Navigation,
     Package,
+    Pencil,
+    Save,
     ShieldCheck,
-    Sparkles
+    Sparkles,
+    X
 } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import api from '../../services/api';
@@ -75,21 +79,6 @@ const ShowroomOwnerDashboard = () => {
     const { toast } = useToast();
     const [dashboard, setDashboard] = useState(null);
     const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchDashboard = async () => {
-            try {
-                const res = await api.get('/showroom-owner/dashboard');
-                setDashboard(res.data);
-            } catch (error) {
-                toast(error.response?.data?.message || 'Failed to load showroom dashboard', 'error');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchDashboard();
-    }, [toast]);
 
     const stats = dashboard?.stats || {};
     const showroom = dashboard?.showroom;

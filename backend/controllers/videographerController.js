@@ -19,7 +19,7 @@ export const getDashboard = async (req, res) => {
 
         const bookings = await Booking.find({ videographer_id: videographer._id })
             .populate('package_id', 'name price')
-            .populate('showroom_id', 'name address')
+            .populate('showroom_id', 'name address map_link')
             .sort({ booking_date: 1 });
 
         const now = new Date();
@@ -64,6 +64,7 @@ export const getDashboard = async (req, res) => {
                 customer: booking.customer_name,
                 vehicle: `${booking.vehicle_brand} ${booking.vehicle_model}`,
                 location: booking.showroom_id?.address || 'Client Location',
+                map_link: booking.showroom_id?.map_link || null,
                 date: bookingDate.toLocaleDateString(),
                 time: booking.time_slot,
                 status: booking.status,
@@ -283,7 +284,7 @@ export const getBookingDetails = async (req, res) => {
 
         const booking = await Booking.findById(req.params.id)
             .populate('package_id', 'name duration_minutes features price')
-            .populate('showroom_id', 'name address contact_number');
+            .populate('showroom_id', 'name address map_link contact_number');
 
         if (!booking || booking.videographer_id.toString() !== videographer._id.toString()) {
             return res.status(404).json({ message: 'Booking not found or not authorized' });

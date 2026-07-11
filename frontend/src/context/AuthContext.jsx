@@ -61,12 +61,19 @@ export const AuthProvider = ({ children }) => {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             setUser(null);
-            window.location.href = '/login';
+            window.location.href = '/';
         }
     };
 
+    const updateUser = (updatedUser) => {
+        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const newUser = { ...storedUser, ...updatedUser };
+        localStorage.setItem('user', JSON.stringify(newUser));
+        setUser(newUser);
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, registerShowroom, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, registerShowroom, logout, loading, updateUser }}>
             {!loading && children}
         </AuthContext.Provider>
     );

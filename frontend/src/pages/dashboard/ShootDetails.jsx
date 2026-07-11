@@ -13,7 +13,8 @@ import {
     Activity,
     Upload,
     Play,
-    Loader
+    Loader,
+    Navigation
 } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../components/Toast';
@@ -218,8 +219,27 @@ const ShootDetails = () => {
                                     </p>
                                 </div>
                                 <div className="sm:col-span-2">
-                                    <p className="text-xs text-gray-500 uppercase tracking-wider">Address</p>
-                                    <p className="text-white font-medium">{booking.showroom_id?.address || 'N/A'}</p>
+                                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Address</p>
+                                    <p className="text-white font-medium mb-3">{booking.showroom_id?.address || 'N/A'}</p>
+                                    {booking.showroom_id?.map_link ? (
+                                        <a
+                                            href={booking.showroom_id.map_link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all
+                                                bg-[var(--accent)] text-black hover:bg-opacity-90
+                                                shadow-[0_0_16px_rgba(234,179,8,0.35)] hover:shadow-[0_0_24px_rgba(234,179,8,0.55)]"
+                                        >
+                                            <Navigation size={16} />
+                                            Get Directions on Google Maps
+                                        </a>
+                                    ) : (
+                                        <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm
+                                            bg-[var(--glass-bg)] border border-[var(--glass-border)] text-gray-500 cursor-not-allowed">
+                                            <Navigation size={16} />
+                                            No map link added yet
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </div>

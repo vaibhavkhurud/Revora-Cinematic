@@ -1,6 +1,7 @@
 import Showroom from '../models/Showroom.js';
 import Booking from '../models/Booking.js';
 import Payment from '../models/Payment.js';
+import User from '../models/User.js';
 
 const emptyDashboard = (showroom) => ({
     showroom,
@@ -135,7 +136,7 @@ export const getShowroomOwnerDashboard = async (req, res) => {
 // @access  Showroom Owner
 export const getShowroomProfile = async (req, res) => {
     try {
-        const showroom = await Showroom.findOne({ owner_id: req.user._id });
+        const showroom = await Showroom.findOne({ owner_id: req.user._id }).populate('owner_id', 'name email');
         if (!showroom) {
             return res.status(404).json({ message: 'Showroom profile not found' });
         }
@@ -145,3 +146,84 @@ export const getShowroomProfile = async (req, res) => {
         res.status(500).json({ message: 'Server Error' });
     }
 };
+
+// @desc    Update showroom owner profile
+// @route   PUT /api/showroom-owner/profile
+// @access  Showroom Owner
+export const updateShowroomProfile = async (req, res) => {
+    try {
+        const { owner_name, email, name, contact_number, address, map_link } = req.body;
+
+        const showroom = await Showroom.findOne({ owner_id: req.user._id });
+        if (!showroom) {
+            return res.status(404).json({ message: 'Showroom profile not found' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Update User info
+        if (owner_name !== undefined) user.name = owner_name.trim();
+        if (email !== undefined) {
+            const emailLower = email.toLowerCase().trim();
+            if (emailLower !== user.email) {
+                // Check if email already exists
+                const existingUser = await User.findOne({ email: emailLower });
+                if (existingUser) {
+                    return res.status(400).json({ message: 'Email is already in use by another account' });
+                }
+                user.email = emailLower;
+            }
+        }
+        await user.save();
+
+        // Update Showroom info
+        if (name !== undefined) showroom.name = name.trim();
+        if (contact_number !== undefined) showroom.contact_number = contact_number.trim();
+        if (address !== undefined) showroom.address = address.trim();
+        if (map_link !== undefined) showroom.map_link = map_link.trim() || null;
+        await showroom.save();
+
+        // Fetch fully updated populated showroom profile
+        const updatedShowroom = await Showroom.findById(showroom._id).populate('owner_id', 'name email');
+
+        res.json({
+            message: 'Profile updated successfully',
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+            },
+            showroom: updatedShowroom
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Update showroom location (address + map link)
+// @route   PUT /api/showroom-owner/location
+// @access  Showroom Owner
+export const updateShowroomLocation = async (req, res) => {
+    try {
+        const { address, map_link } = req.body;
+        const showroom = await Showroom.findOne({ owner_id: req.user._id });
+        if (!showroom) {
+            return res.status(404).json({ message: 'Showroom profile not found' });
+        }
+
+        if (address !== undefined) showroom.address = address.trim();
+        if (map_link !== undefined) showroom.map_link = map_link.trim() || null;
+
+        await showroom.save();
+        res.json({ message: 'Location updated successfully', showroom });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+

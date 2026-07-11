@@ -169,8 +169,24 @@ const AwaitingResponseCard = ({ shoot, onRespond, onViewDetails }) => {
 
                     <div className="grid grid-cols-2 gap-3 text-sm">
                         <div className="flex items-start gap-2">
-                            <MapPin size={15} className="text-cyan-400 mt-0.5 flex-shrink-0" />
-                            <span className="text-gray-300 truncate text-xs" title={shoot.location}>{shoot.location}</span>
+                            {shoot.map_link ? (
+                                <a
+                                    href={shoot.map_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title="Open in Google Maps"
+                                    className="flex items-start gap-2 text-cyan-400 hover:text-cyan-300 transition-colors group"
+                                    onClick={e => e.stopPropagation()}
+                                >
+                                    <MapPin size={15} className="mt-0.5 flex-shrink-0 group-hover:scale-110 transition-transform" />
+                                    <span className="text-xs truncate underline underline-offset-2" title={shoot.location}>{shoot.location}</span>
+                                </a>
+                            ) : (
+                                <>
+                                    <MapPin size={15} className="text-cyan-400 mt-0.5 flex-shrink-0" />
+                                    <span className="text-gray-300 truncate text-xs" title={shoot.location}>{shoot.location}</span>
+                                </>
+                            )}
                         </div>
                         <div className="flex items-start gap-2">
                             <Calendar size={15} className="text-cyan-400 mt-0.5 flex-shrink-0" />
@@ -324,8 +340,24 @@ const ShootCard = ({ shoot, onUpdateStatus, onViewDetails }) => {
 
                 <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="flex items-start gap-2">
-                        <MapPin size={16} className="text-[var(--accent)] mt-0.5 flex-shrink-0" />
-                        <span className="text-gray-300 truncate" title={shoot.location}>{shoot.location}</span>
+                        {shoot.map_link ? (
+                            <a
+                                href={shoot.map_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Open in Google Maps"
+                                className="flex items-start gap-2 text-[var(--accent)] hover:text-yellow-300 transition-colors group"
+                                onClick={e => e.stopPropagation()}
+                            >
+                                <MapPin size={16} className="mt-0.5 flex-shrink-0 group-hover:scale-110 transition-transform" />
+                                <span className="truncate underline underline-offset-2" title={shoot.location}>{shoot.location}</span>
+                            </a>
+                        ) : (
+                            <>
+                                <MapPin size={16} className="text-[var(--accent)] mt-0.5 flex-shrink-0" />
+                                <span className="text-gray-300 truncate" title={shoot.location}>{shoot.location}</span>
+                            </>
+                        )}
                     </div>
                     <div className="flex items-start gap-2">
                         <Calendar size={16} className="text-[var(--accent)] mt-0.5 flex-shrink-0" />
