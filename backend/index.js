@@ -26,7 +26,9 @@ const allowedOrigins = [
     'http://localhost:5174',
     'http://localhost:5175',
     'http://localhost:3000',
-    'https://revora-cinematic.vercel.app'
+    'https://revora-cinematic.vercel.app',
+    'https://www.revoracinematic.com',
+    'https://revoracinematic.com'
 ].filter(Boolean);
 
 const corsOptions = {
