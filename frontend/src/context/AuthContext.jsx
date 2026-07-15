@@ -20,6 +20,72 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, []);
 
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!user || !token) return;
+
+        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        const sseUrl = `${API_BASE_URL.replace(/\/$/, '')}/auth/session-stream?token=${encodeURIComponent(token)}`;
+        
+        let eventSource;
+        try {
+            eventSource = new EventSource(sseUrl, { withCredentials: true });
+            
+            eventSource.addEventListener('logout', (event) => {
+                let data = {};
+                try {
+                    data = JSON.parse(event.data);
+                } catch (e) {
+                    console.error('Failed to parse SSE data', e);
+                }
+                
+                toast(data.message || 'Logged out because you logged in from another device', 'error');
+                
+                // Clear local storage and state
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                setUser(null);
+                
+                // Redirect immediately
+                window.location.href = '/login?reason=session_invalidated';
+            });
+
+            eventSource.onerror = (err) => {
+                console.error('SSE connection error:', err);
+            };
+        } catch (err) {
+            console.error('Failed to create EventSource:', err);
+        }
+
+        return () => {
+            if (eventSource) {
+                eventSource.close();
+            }
+        };
+    }, [user]);
+
+    useEffect(() => {
+        if (!user) return;
+
+        const checkSession = async () => {
+            try {
+                await api.get('/auth/check-session');
+            } catch (err) {
+                console.error('Periodic session validation failed:', err);
+            }
+        };
+
+        // Check every 10 seconds
+        const interval = setInterval(checkSession, 10000);
+
+        // Run once on mount or login
+        checkSession();
+
+        return () => {
+            clearInterval(interval);
+        };
+    }, [user]);
+
     const login = async (email, password) => {
         try {
             const res = await api.post('/auth/login', { email, password });

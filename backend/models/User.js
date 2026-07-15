@@ -31,6 +31,10 @@ const userSchema = new mongoose.Schema({
     reset_token_expires: {
         type: Date,
         default: null
+    },
+    tokenVersion: {
+        type: Number,
+        default: 0
     }
 }, { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } });
 

@@ -25,6 +25,14 @@ api.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
+        // If the session was invalidated by another device login, logout instantly
+        if (error.response?.status === 401 && error.response?.data?.message === 'Session invalidated, logged in from another device') {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login?reason=session_invalidated';
+            return Promise.reject(error);
+        }
+
         // If error is 401 and we haven't already retried
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;

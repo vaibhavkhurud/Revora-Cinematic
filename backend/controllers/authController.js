@@ -4,6 +4,27 @@ import User from '../models/User.js';
 import Showroom from '../models/Showroom.js';
 import crypto from 'crypto';
 
+// Active SSE connections: userId -> Array of client objects
+const sseClients = new Map();
+
+// Helper to notify a user's other sessions to logout
+export const notifyUserLogout = (userId) => {
+    const clients = sseClients.get(userId);
+    console.log(`[SSE] notifyUserLogout called for user ${userId}. Found ${clients ? clients.length : 0} clients.`);
+    if (clients) {
+        clients.forEach((client, idx) => {
+            try {
+                console.log(`[SSE] Sending logout event to client index ${idx} for user ${userId}`);
+                client.res.write(`event: logout\ndata: ${JSON.stringify({ message: 'Session invalidated, logged in from another device' })}\n\n`);
+                client.res.end();
+            } catch (err) {
+                console.error(`[SSE] Error sending SSE logout event to client ${idx}:`, err);
+            }
+        });
+        sseClients.delete(userId);
+    }
+};
+
 const isProduction = process.env.NODE_ENV === 'production';
 const getCookieOptions = () => ({
     httpOnly: true,
@@ -12,11 +33,11 @@ const getCookieOptions = () => ({
     maxAge: 7 * 24 * 60 * 60 * 1000,
 });
 
-const generateTokens = (id) => {
-    const accessToken = jwt.sign({ id }, process.env.JWT_SECRET, {
+const generateTokens = (id, tokenVersion) => {
+    const accessToken = jwt.sign({ id, tokenVersion }, process.env.JWT_SECRET, {
         expiresIn: '15m',
     });
-    const refreshToken = jwt.sign({ id }, process.env.JWT_REFRESH_SECRET, {
+    const refreshToken = jwt.sign({ id, tokenVersion }, process.env.JWT_REFRESH_SECRET, {
         expiresIn: '7d',
     });
     return { accessToken, refreshToken };
@@ -55,7 +76,7 @@ export const registerShowroom = async (req, res) => {
         
         await showroom.save();
 
-        const { accessToken, refreshToken } = generateTokens(user._id);
+        const { accessToken, refreshToken } = generateTokens(user._id, user.tokenVersion);
 
         res.cookie('jwt', refreshToken, getCookieOptions());
 
@@ -87,7 +108,13 @@ export const login = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (isMatch) {
-            const { accessToken, refreshToken } = generateTokens(user._id);
+            user.tokenVersion = (user.tokenVersion || 0) + 1;
+            await user.save();
+            
+            // Notify existing SSE connections to log out instantly
+            notifyUserLogout(user._id.toString());
+
+            const { accessToken, refreshToken } = generateTokens(user._id, user.tokenVersion);
 
             res.cookie('jwt', refreshToken, getCookieOptions());
 
@@ -125,7 +152,11 @@ export const refreshToken = async (req, res) => {
             return res.status(401).json({ message: 'Invalid refresh token' });
         }
 
-        const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        if (decoded.tokenVersion !== user.tokenVersion) {
+            return res.status(401).json({ message: 'Session invalidated, logged in from another device' });
+        }
+
+        const accessToken = jwt.sign({ id: user._id, tokenVersion: user.tokenVersion }, process.env.JWT_SECRET, {
             expiresIn: '15m',
         });
 
@@ -212,5 +243,61 @@ export const resetPassword = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Establish real-time session stream for instant logout notifications
+// @route   GET /api/auth/session-stream
+// @access  Private (token passed via query param)
+export const sessionStream = async (req, res) => {
+    const token = req.query.token;
+    if (!token) {
+        return res.status(400).json({ message: 'Token required' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id);
+        if (!user || decoded.tokenVersion !== user.tokenVersion) {
+            return res.status(401).json({ message: 'Invalid token version or user' });
+        }
+
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+
+        res.write('data: connected\n\n');
+
+        const userId = user._id.toString();
+        const clientObj = { res, tokenVersion: decoded.tokenVersion };
+
+        console.log(`[SSE] New client connection. User ID: ${userId}, Token Version: ${decoded.tokenVersion}`);
+
+        if (!sseClients.has(userId)) {
+            sseClients.set(userId, []);
+        }
+        sseClients.get(userId).push(clientObj);
+
+        const keepAlive = setInterval(() => {
+            res.write(': keep-alive\n\n');
+        }, 30000);
+
+        req.on('close', () => {
+            console.log(`[SSE] Client connection closed. User ID: ${userId}, Token Version: ${decoded.tokenVersion}`);
+            clearInterval(keepAlive);
+            const clients = sseClients.get(userId);
+            if (clients) {
+                const updatedClients = clients.filter(c => c.res !== res);
+                if (updatedClients.length === 0) {
+                    sseClients.delete(userId);
+                } else {
+                    sseClients.set(userId, updatedClients);
+                }
+            }
+        });
+    } catch (error) {
+        console.error('SSE verification error:', error);
+        return res.status(401).json({ message: 'Invalid or expired token' });
     }
 };

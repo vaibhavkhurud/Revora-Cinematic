@@ -22,6 +22,11 @@ export const protect = async (req, res, next) => {
                 return res.status(401).json({ message: 'User not found' });
             }
 
+            // Check if tokenVersion matches the database
+            if (decoded.tokenVersion !== user.tokenVersion) {
+                return res.status(401).json({ message: 'Session invalidated, logged in from another device' });
+            }
+
             req.user = user;
             next();
         } catch (error) {
