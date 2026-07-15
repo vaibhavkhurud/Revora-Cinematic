@@ -12,13 +12,17 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../components/Toast';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 const formatCurrency = (amount) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount || 0);
 
 const formatDate = (dateStr) => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '-';
+    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
 };
 
 const StatCard = ({ title, value, icon: Icon, subtitle, accent = false }) => (
@@ -41,17 +45,23 @@ const Earnings = () => {
     const { toast } = useToast();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
 
     const fetchEarnings = useCallback(async () => {
         try {
-            const res = await api.get('/videographer/earnings');
+            setLoading(true);
+            const params = {};
+            if (startDate) params.startDate = startDate.toISOString();
+            if (endDate) params.endDate = endDate.toISOString();
+            const res = await api.get('/videographer/earnings', { params });
             setData(res.data);
         } catch (error) {
             toast(error.response?.data?.message || 'Failed to load earnings', 'error');
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [toast, startDate, endDate]);
 
     useEffect(() => {
         fetchEarnings();
@@ -72,9 +82,46 @@ const Earnings = () => {
     return (
         <div className="space-y-8">
             {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-[var(--text-color)]">My Earnings</h1>
-                <p className="text-gray-400 mt-2">Track your income from completed shoots</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-[var(--text-color)]">My Earnings</h1>
+                    <p className="text-gray-400 mt-2">Track your income from completed shoots</p>
+                </div>
+                <div className="flex items-center gap-3 bg-[var(--glass-bg)] p-2 rounded-xl border border-[var(--glass-border)] z-50">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-400 px-2">From:</span>
+                        <div className="relative">
+                            <Calendar size={16} className="absolute left-2.5 top-2.5 text-gray-400 pointer-events-none" />
+                            <DatePicker
+                                selected={startDate}
+                                onChange={(date) => setStartDate(date)}
+                                selectsStart
+                                startDate={startDate}
+                                endDate={endDate}
+                                placeholderText="Select Date"
+                                dateFormat="dd/MM/yyyy"
+                                className="bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-lg pl-9 pr-3 py-1.5 text-sm text-[var(--text-color)] focus:outline-none focus:border-[var(--accent)] w-32 md:w-36"
+                            />
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-400 px-2">To:</span>
+                        <div className="relative">
+                            <Calendar size={16} className="absolute left-2.5 top-2.5 text-gray-400 pointer-events-none" />
+                            <DatePicker
+                                selected={endDate}
+                                onChange={(date) => setEndDate(date)}
+                                selectsEnd
+                                startDate={startDate}
+                                endDate={endDate}
+                                minDate={startDate}
+                                placeholderText="Select Date"
+                                dateFormat="dd/MM/yyyy"
+                                className="bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-lg pl-9 pr-3 py-1.5 text-sm text-[var(--text-color)] focus:outline-none focus:border-[var(--accent)] w-32 md:w-36"
+                            />
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Stats */}

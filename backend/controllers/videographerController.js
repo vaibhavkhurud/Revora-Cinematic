@@ -311,14 +311,23 @@ export const getBookingDetails = async (req, res) => {
 // @access  Private/Videographer
 export const getEarnings = async (req, res) => {
     try {
+        const { startDate, endDate } = req.query;
         const videographer = await Videographer.findOne({ user_id: req.user._id });
         if (!videographer) {
             return res.status(404).json({ message: 'Videographer profile not found' });
         }
 
+        let dateFilter = {};
+        if (startDate || endDate) {
+            dateFilter.updated_at = {};
+            if (startDate) dateFilter.updated_at.$gte = new Date(startDate);
+            if (endDate) dateFilter.updated_at.$lte = new Date(endDate);
+        }
+
         const completedBookings = await Booking.find({
             videographer_id: videographer._id,
-            status: 'completed'
+            status: 'completed',
+            ...dateFilter
         }).populate('package_id', 'name price').sort({ updated_at: -1 });
 
         // Calculate totals

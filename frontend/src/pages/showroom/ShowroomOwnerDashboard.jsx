@@ -22,11 +22,9 @@ const chartColors = ['#FACC15', '#22C55E', '#38BDF8', '#A78BFA', '#F97316'];
 
 const formatDate = (value) => {
     if (!value) return '-';
-    return new Date(value).toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-    });
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return '-';
+    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
 };
 
 const formatTime = (value) => {
@@ -79,6 +77,20 @@ const ShowroomOwnerDashboard = () => {
     const { toast } = useToast();
     const [dashboard, setDashboard] = useState(null);
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchDashboard = async () => {
+            try {
+                const res = await api.get('/showroom-owner/dashboard');
+                setDashboard(res.data);
+            } catch (error) {
+                toast(error.response?.data?.message || 'Failed to load dashboard', 'error');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchDashboard();
+    }, [toast]);
 
     const stats = dashboard?.stats || {};
     const showroom = dashboard?.showroom;
@@ -177,7 +189,7 @@ const ShowroomOwnerDashboard = () => {
                                                 </div>
                                                 <div>
                                                     <p className="text-sm font-medium text-[var(--text-h)]">{booking.package_name}</p>
-                                                    <p className="text-xs text-gray-500">{Number(booking.price || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</p>
+                                                    <p className="text-xs text-gray-500">{Number(booking.price || 0).toLocaleString(undefined, { style: 'currency', currency: 'INR' })}</p>
                                                 </div>
                                             </div>
                                         </td>

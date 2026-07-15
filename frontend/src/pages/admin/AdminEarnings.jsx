@@ -11,10 +11,14 @@ import {
     BarChart3,
     Trophy,
     ArrowUpRight,
-    CheckCircle
+    CheckCircle,
+    ChevronDown,
+    ChevronUp
 } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../components/Toast';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 const formatCurrency = (amount) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount || 0);
@@ -39,17 +43,24 @@ const AdminEarnings = () => {
     const { toast } = useToast();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
+    const [expandedVid, setExpandedVid] = useState(null);
 
     const fetchEarnings = useCallback(async () => {
         try {
-            const res = await api.get('/bookings/admin/earnings');
+            setLoading(true);
+            const params = {};
+            if (startDate) params.startDate = startDate.toISOString();
+            if (endDate) params.endDate = endDate.toISOString();
+            const res = await api.get('/bookings/admin/earnings', { params });
             setData(res.data);
         } catch (error) {
             toast(error.response?.data?.message || 'Failed to load earnings', 'error');
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [toast, startDate, endDate]);
 
     useEffect(() => {
         fetchEarnings();
@@ -92,9 +103,46 @@ const AdminEarnings = () => {
     return (
         <div className="space-y-8">
             {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-[var(--text-color)]">Revenue & Earnings</h1>
-                <p className="text-gray-400 mt-2">Platform-wide earnings overview and videographer performance</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-[var(--text-color)]">Revenue & Earnings</h1>
+                    <p className="text-gray-400 mt-2">Platform-wide earnings overview and videographer performance</p>
+                </div>
+                <div className="flex items-center gap-3 bg-[var(--glass-bg)] p-2 rounded-xl border border-[var(--glass-border)] z-50">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-400 px-2">From:</span>
+                        <div className="relative">
+                            <Calendar size={16} className="absolute left-2.5 top-2.5 text-gray-400 pointer-events-none" />
+                            <DatePicker
+                                selected={startDate}
+                                onChange={(date) => setStartDate(date)}
+                                selectsStart
+                                startDate={startDate}
+                                endDate={endDate}
+                                placeholderText="Select Date"
+                                dateFormat="dd/MM/yyyy"
+                                className="bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-lg pl-9 pr-3 py-1.5 text-sm text-[var(--text-color)] focus:outline-none focus:border-[var(--accent)] w-32 md:w-36"
+                            />
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-400 px-2">To:</span>
+                        <div className="relative">
+                            <Calendar size={16} className="absolute left-2.5 top-2.5 text-gray-400 pointer-events-none" />
+                            <DatePicker
+                                selected={endDate}
+                                onChange={(date) => setEndDate(date)}
+                                selectsEnd
+                                startDate={startDate}
+                                endDate={endDate}
+                                minDate={startDate}
+                                placeholderText="Select Date"
+                                dateFormat="dd/MM/yyyy"
+                                className="bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-lg pl-9 pr-3 py-1.5 text-sm text-[var(--text-color)] focus:outline-none focus:border-[var(--accent)] w-32 md:w-36"
+                            />
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Stats */}
@@ -338,8 +386,14 @@ const AdminEarnings = () => {
                             <tbody>
                                 {videographer_breakdown.map((vid, idx) => {
                                     const avg = vid.completed_shoots > 0 ? vid.total_earnings / vid.completed_shoots : 0;
+                                    const isExpanded = expandedVid === vid.videographer_id;
+                                    const hasDailyEarnings = vid.daily_earnings && Object.keys(vid.daily_earnings).length > 0;
                                     return (
-                                        <tr key={vid.videographer_id} className="border-b border-[var(--glass-border)]/50 hover:bg-[var(--glass-bg)] transition-colors">
+                                        <React.Fragment key={vid.videographer_id}>
+                                        <tr 
+                                            className={`border-b border-[var(--glass-border)]/50 hover:bg-[var(--glass-bg)] transition-colors ${hasDailyEarnings ? 'cursor-pointer' : ''}`}
+                                            onClick={() => hasDailyEarnings && setExpandedVid(isExpanded ? null : vid.videographer_id)}
+                                        >
                                             <td className="px-5 py-4 text-gray-400 font-semibold">#{idx + 1}</td>
                                             <td className="px-5 py-4">
                                                 <div className="flex items-center gap-3">
@@ -359,8 +413,33 @@ const AdminEarnings = () => {
                                                 </span>
                                             </td>
                                             <td className="text-right px-5 py-4 font-bold text-green-400">{formatCurrency(vid.total_earnings)}</td>
-                                            <td className="text-right px-5 py-4 text-gray-300">{formatCurrency(avg)}</td>
+                                            <td className="text-right px-5 py-4 text-gray-300 flex items-center justify-end gap-2">
+                                                {formatCurrency(avg)}
+                                                {hasDailyEarnings && (
+                                                    isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />
+                                                )}
+                                            </td>
                                         </tr>
+                                        {isExpanded && hasDailyEarnings && (
+                                            <tr className="bg-[var(--glass-bg)]/50 border-b border-[var(--glass-border)]">
+                                                <td colSpan="5" className="px-5 py-4">
+                                                    <div className="pl-12 space-y-2">
+                                                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Daily Earnings</h4>
+                                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                                            {Object.entries(vid.daily_earnings)
+                                                                .sort((a, b) => new Date(b[0]) - new Date(a[0]))
+                                                                .map(([date, amount]) => (
+                                                                <div key={date} className="bg-[var(--bg-color)] p-3 rounded-lg border border-[var(--glass-border)]">
+                                                                    <div className="text-xs text-gray-500 mb-1">{(new Date(date)).toLocaleDateString("en-GB")}</div>
+                                                                    <div className="text-sm font-bold text-green-400">{formatCurrency(amount)}</div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                        </React.Fragment>
                                     );
                                 })}
                             </tbody>

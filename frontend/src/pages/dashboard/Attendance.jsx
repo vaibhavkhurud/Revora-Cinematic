@@ -100,7 +100,7 @@ const Attendance = () => {
                 <div className="glass rounded-2xl p-8 border border-[var(--glass-border)] text-center relative overflow-hidden group lg:col-span-1 flex flex-col justify-center">
                     <div className="absolute -right-10 -top-10 w-40 h-40 bg-[var(--accent)] opacity-[0.03] rounded-full group-hover:scale-150 transition-transform duration-700"></div>
                     
-                    <h2 className="text-gray-400 font-medium mb-2">{currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</h2>
+                    <h2 className="text-gray-400 font-medium mb-2">{currentTime.toLocaleDateString("en-GB")}</h2>
                     <div className="text-5xl font-bold text-[var(--text-color)] tracking-tight mb-8 font-mono">
                         {currentTime.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </div>
@@ -207,8 +207,8 @@ const Attendance = () => {
                                     return (
                                         <tr key={record._id} className="hover:bg-[var(--glass-bg)] transition-colors">
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <p className="font-medium text-white">{date.toLocaleDateString()}</p>
-                                                <p className="text-xs text-gray-500">{date.toLocaleDateString('en-US', { weekday: 'long' })}</p>
+                                                <p className="font-medium text-white">{date.toLocaleDateString("en-GB")}</p>
+                                                <p className="text-xs text-gray-500">{date.toLocaleDateString("en-GB")}</p>
                                             </td>
                                             <td className="px-6 py-4 text-gray-300">
                                                 {record.check_in_time || '--:--'}

@@ -341,7 +341,7 @@ const SuperAdminDashboard = () => {
                                         </td>
                                         <td className="px-6 py-4 hidden md:table-cell">
                                             <p className="text-sm text-gray-300">
-                                                {b.booking_date ? new Date(b.booking_date).toLocaleDateString() : '—'}
+                                                {b.booking_date ? (new Date(b.booking_date)).toLocaleDateString("en-GB") : '—'}
                                             </p>
                                         </td>
                                         <td className="px-6 py-4">

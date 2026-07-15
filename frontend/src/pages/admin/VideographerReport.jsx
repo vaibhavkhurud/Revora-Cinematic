@@ -122,7 +122,7 @@ const VideographerReport = () => {
                         <div className="mt-3 flex flex-wrap gap-4 text-sm text-gray-400">
                             <span className="flex items-center gap-1.5"><Mail size={16} /> {profile.email}</span>
                             <span className="flex items-center gap-1.5"><Phone size={16} /> {profile.phone}</span>
-                            <span className="flex items-center gap-1.5"><Calendar size={16} /> Joined {new Date(profile.joined).toLocaleDateString()}</span>
+                            <span className="flex items-center gap-1.5"><Calendar size={16} /> Joined {(new Date(profile.joined)).toLocaleDateString("en-GB")}</span>
                         </div>
                     </div>
                 </div>
@@ -186,7 +186,7 @@ const VideographerReport = () => {
                                 recent_shoots.map((shoot) => (
                                     <tr key={shoot.id} className="hover:bg-[var(--glass-bg)] transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                            {new Date(shoot.booking_date).toLocaleDateString()}
+                                            {(new Date(shoot.booking_date)).toLocaleDateString("en-GB")}
                                         </td>
                                         <td className="px-6 py-4">
                                             <p className="font-semibold text-[var(--text-color)]">{shoot.vehicle}</p>

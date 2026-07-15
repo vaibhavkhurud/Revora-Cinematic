@@ -663,7 +663,16 @@ export const updateBookingStatus = async (req, res) => {
 // @access  Super Admin
 export const getAdminEarnings = async (req, res) => {
     try {
-        const completedBookings = await Booking.find({ status: 'completed' })
+        const { startDate, endDate } = req.query;
+
+        let dateFilter = {};
+        if (startDate || endDate) {
+            dateFilter.updated_at = {};
+            if (startDate) dateFilter.updated_at.$gte = new Date(startDate);
+            if (endDate) dateFilter.updated_at.$lte = new Date(endDate);
+        }
+
+        const completedBookings = await Booking.find({ status: 'completed', ...dateFilter })
             .populate('package_id', 'name price')
             .populate({
                 path: 'videographer_id',
@@ -710,11 +719,18 @@ export const getAdminEarnings = async (req, res) => {
                         name: vidName,
                         email: vidEmail,
                         completed_shoots: 0,
-                        total_earnings: 0
+                        total_earnings: 0,
+                        daily_earnings: {}
                     };
                 }
                 videographerBreakdown[vidId].completed_shoots++;
                 videographerBreakdown[vidId].total_earnings += price;
+
+                const date = booking.updated_at || booking.created_at;
+                if (date) {
+                    const dateKey = new Date(date).toISOString().split('T')[0];
+                    videographerBreakdown[vidId].daily_earnings[dateKey] = (videographerBreakdown[vidId].daily_earnings[dateKey] || 0) + price;
+                }
             }
 
             // Monthly revenue

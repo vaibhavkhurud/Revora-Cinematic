@@ -273,7 +273,7 @@ const ShootDetails = () => {
                         <div className="grid grid-cols-2 gap-4 text-left mb-6 bg-[var(--bg-color)] rounded-xl p-4 border border-[var(--glass-border)]">
                             <div>
                                 <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Calendar size={12}/> Date</p>
-                                <p className="font-semibold text-white">{new Date(booking.booking_date).toLocaleDateString()}</p>
+                                <p className="font-semibold text-white">{(new Date(booking.booking_date)).toLocaleDateString("en-GB")}</p>
                             </div>
                             <div>
                                 <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Clock size={12}/> Time</p>

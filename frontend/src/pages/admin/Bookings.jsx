@@ -32,11 +32,9 @@ const StatusBadge = ({ status }) => (
 
 const formatDate = (value) => {
     if (!value) return '-';
-    return new Date(value).toLocaleDateString(undefined, {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-    });
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return '-';
+    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
 };
 
 const formatTime = (value) => {

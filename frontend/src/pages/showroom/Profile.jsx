@@ -299,7 +299,7 @@ const ShowroomProfile = () => {
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-1.5">Registered On</label>
                             <p className="text-sm text-gray-400 bg-[var(--glass-bg)] border border-[var(--glass-border)] px-4 py-2.5 rounded-xl flex items-center justify-between">
-                                <span>{profile?.created_at ? new Date(profile.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}</span>
+                                <span>{profile?.created_at ? (new Date(profile.created_at)).toLocaleDateString("en-GB") : '—'}</span>
                                 <Lock size={14} className="text-gray-600" />
                             </p>
                         </div>
