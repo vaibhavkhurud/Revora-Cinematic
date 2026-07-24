@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import Videographer from '../models/Videographer.js';
 import Booking from '../models/Booking.js';
 import Package from '../models/Package.js';
+import SystemSetting from '../models/SystemSetting.js';
 
 // @desc    Add a new videographer
 // @route   POST /api/admin/videographers
@@ -170,6 +171,143 @@ export const getVideographerReport = async (req, res) => {
                 total_earnings: totalEarnings
             },
             recent_shoots
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Get admin profile
+// @route   GET /api/admin/profile
+// @access  Private/SuperAdmin
+export const getAdminProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select('-password');
+        if (!user) {
+            return res.status(404).json({ message: 'Admin not found' });
+        }
+        res.json({ user });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Update admin profile
+// @route   PUT /api/admin/profile
+// @access  Private/SuperAdmin
+export const updateAdminProfile = async (req, res) => {
+    try {
+        const { name, email } = req.body;
+        const user = await User.findById(req.user._id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'Admin not found' });
+        }
+
+        if (name !== undefined) user.name = name.trim();
+        if (email !== undefined) {
+            const emailLower = email.toLowerCase().trim();
+            if (emailLower !== user.email) {
+                const existingUser = await User.findOne({ email: emailLower });
+                if (existingUser) {
+                    return res.status(400).json({ message: 'Email is already in use' });
+                }
+                user.email = emailLower;
+            }
+        }
+
+        await user.save();
+
+        res.json({
+            message: 'Profile updated successfully',
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Change admin password
+// @route   PUT /api/admin/change-password
+// @access  Private/SuperAdmin
+export const changeAdminPassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ message: 'Please provide current and new passwords' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'Admin not found' });
+        }
+
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Incorrect current password' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
+        user.tokenVersion = (user.tokenVersion || 0) + 1;
+        await user.save();
+
+        res.json({ message: 'Password updated successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Get system settings
+// @route   GET /api/admin/system-settings
+// @access  Private/SuperAdmin
+export const getSystemSettings = async (req, res) => {
+    try {
+        let settings = await SystemSetting.findOne();
+        if (!settings) {
+            settings = new SystemSetting();
+            await settings.save();
+        }
+        res.json({ settings });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Update system settings
+// @route   PUT /api/admin/system-settings
+// @access  Private/SuperAdmin
+export const updateSystemSettings = async (req, res) => {
+    try {
+        const { platform_name, support_email, commission_rate, maintenance_mode, booking_advance_hours } = req.body;
+        
+        let settings = await SystemSetting.findOne();
+        if (!settings) {
+            settings = new SystemSetting();
+        }
+
+        if (platform_name !== undefined) settings.platform_name = platform_name.trim();
+        if (support_email !== undefined) settings.support_email = support_email.trim();
+        if (commission_rate !== undefined) settings.commission_rate = Number(commission_rate);
+        if (maintenance_mode !== undefined) settings.maintenance_mode = !!maintenance_mode;
+        if (booking_advance_hours !== undefined) settings.booking_advance_hours = Number(booking_advance_hours);
+
+        await settings.save();
+
+        res.json({
+            message: 'System settings updated successfully',
+            settings
         });
     } catch (error) {
         console.error(error);

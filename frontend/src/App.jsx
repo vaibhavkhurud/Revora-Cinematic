@@ -24,6 +24,7 @@ import ShootDetails from './pages/dashboard/ShootDetails';
 import Attendance from './pages/dashboard/Attendance';
 import Earnings from './pages/dashboard/Earnings';
 import AdminEarnings from './pages/admin/AdminEarnings';
+import AdminSettings from './pages/admin/Settings';
 import Notifications from './pages/Notifications';
 import NotFound from './pages/NotFound';
 import ShowroomProfile from './pages/showroom/Profile';
@@ -69,6 +70,7 @@ function App() {
               <Route path="videographers/:id" element={<VideographerReport />} />
               <Route path="analytics" element={<Analytics />} />
               <Route path="earnings" element={<AdminEarnings />} />
+              <Route path="settings" element={<AdminSettings />} />
             </Route>
 
             {/* Showroom Owner Routes */}
