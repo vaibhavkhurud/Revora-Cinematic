@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CalendarPlus, CheckCircle, ImagePlus, Package, UploadCloud, X } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../components/Toast';
+import { loadRazorpayScript } from '../../utils/razorpayLoader';
 
 const initialForm = {
     customer_name: '',
@@ -50,12 +51,6 @@ const validateForm = (form, photos) => {
         return 'Shoot date and time slot must be in the future.';
     }
 
-    if (!photos.length) return 'Upload at least one vehicle photo.';
-    if (photos.length > 8) return 'You can upload up to 8 vehicle photos.';
-
-    const oversized = photos.find(photo => photo.size > 5 * 1024 * 1024);
-    if (oversized) return 'Each vehicle photo must be 5MB or smaller.';
-
     return '';
 };
 
@@ -73,6 +68,8 @@ const NewBooking = () => {
     const [submitting, setSubmitting] = useState(false);
     const [confirmation, setConfirmation] = useState(null);
     const [error, setError] = useState('');
+    const [paying, setPaying] = useState(false);
+    const [paymentSuccess, setPaymentSuccess] = useState(false);
 
     useEffect(() => {
         const fetchPackages = async () => {
@@ -130,6 +127,7 @@ const NewBooking = () => {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             setConfirmation(res.data.booking);
+            setPaymentSuccess(false);
             setForm(initialForm);
             setPhotos([]);
             toast('Booking created successfully!', 'success');
@@ -137,6 +135,99 @@ const NewBooking = () => {
             toast(err.response?.data?.message || 'Failed to create booking', 'error');
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handlePayment = async () => {
+        if (!confirmation) return;
+        setPaying(true);
+        try {
+            const isLoaded = await loadRazorpayScript();
+            if (!isLoaded) {
+                toast('Razorpay SDK failed to load. Are you online?', 'error');
+                setPaying(false);
+                return;
+            }
+
+            const orderRes = await api.post('/payments/create-order', {
+                booking_id: confirmation.id
+            });
+
+            const { order_id, amount, currency, key_id, is_mock } = orderRes.data;
+
+            if (is_mock) {
+                const proceed = window.confirm("Razorpay keys are missing from your backend .env file. Would you like to simulate a successful mock payment for testing?");
+                if (proceed) {
+                    try {
+                        const verifyRes = await api.post('/payments/verify', {
+                            razorpay_order_id: order_id,
+                            razorpay_payment_id: `mock_pay_${Date.now()}`,
+                            razorpay_signature: 'mock_signature',
+                            booking_id: confirmation.id
+                        });
+                        if (verifyRes.data.success) {
+                            toast('Mock payment completed and booking verified!', 'success');
+                            setPaymentSuccess(true);
+                        } else {
+                            toast('Mock payment verification failed.', 'error');
+                        }
+                    } catch (verifyErr) {
+                        toast(verifyErr.response?.data?.message || 'Mock verification failed.', 'error');
+                    }
+                }
+                setPaying(false);
+                return;
+            }
+
+            const options = {
+                key: key_id,
+                amount: amount,
+                currency: currency,
+                name: 'Revora Cinematic',
+                description: `Payment for booking ${confirmation.booking_id}`,
+                order_id: order_id,
+                handler: async function (response) {
+                    try {
+                        const verifyRes = await api.post('/payments/verify', {
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                            booking_id: confirmation.id
+                        });
+
+                        if (verifyRes.data.success) {
+                            toast('Payment successful and booking verified!', 'success');
+                            setPaymentSuccess(true);
+                        } else {
+                            toast('Payment verification failed.', 'error');
+                        }
+                    } catch (verifyErr) {
+                        toast(verifyErr.response?.data?.message || 'Payment verification failed.', 'error');
+                    }
+                },
+                prefill: {
+                    name: confirmation.showroom?.name || confirmation.customer_name,
+                    contact: confirmation.showroom?.contact_number || confirmation.customer_mobile,
+                },
+                theme: {
+                    color: '#3b82f6',
+                },
+                modal: {
+                    ondismiss: function() {
+                        toast('Payment cancelled by user.', 'error');
+                    }
+                }
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', function (response) {
+                toast(`Payment failed: ${response.error.description}`, 'error');
+            });
+            rzp.open();
+        } catch (err) {
+            toast(err.response?.data?.message || 'Failed to initiate payment.', 'error');
+        } finally {
+            setPaying(false);
         }
     };
 
@@ -176,27 +267,7 @@ const NewBooking = () => {
                         </div>
                     </section>
 
-                    <section className="glass border border-[var(--glass-border)] rounded-2xl p-5">
-                        <div className="flex items-center justify-between gap-3 mb-4">
-                            <h2 className="text-lg font-semibold text-[var(--text-h)]">Vehicle Photos</h2>
-                            <span className="text-xs text-gray-500">Up to 8 images, 5MB each</span>
-                        </div>
-                        <label className="flex flex-col items-center justify-center gap-3 min-h-40 rounded-2xl border border-dashed border-[var(--glass-border)] bg-[var(--glass-bg)] cursor-pointer hover:border-[var(--accent)] transition-colors">
-                            <UploadCloud size={28} className="text-[var(--accent)]" />
-                            <span className="text-sm text-[var(--text-h)] font-medium">Upload vehicle photos</span>
-                            <span className="text-xs text-gray-500">PNG, JPG, WEBP images accepted</span>
-                            <input type="file" multiple accept="image/*" onChange={handlePhotos} className="hidden" />
-                        </label>
-                        {previews.length > 0 && (
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-                                {previews.map(preview => (
-                                    <div key={preview.url} className="aspect-square rounded-xl overflow-hidden border border-[var(--glass-border)] bg-[var(--glass-bg)] relative">
-                                        <img src={preview.url} alt={preview.name} className="w-full h-full object-cover" />
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </section>
+
                 </div>
 
                 <aside className="space-y-6">
@@ -255,7 +326,6 @@ const NewBooking = () => {
                             </div>
                             <div>
                                 <p className="text-sm font-semibold text-[var(--text-h)]">{selectedPackage?.name || 'Booking Summary'}</p>
-                                <p className="text-xs text-gray-500">{photos.length} photo{photos.length === 1 ? '' : 's'} selected</p>
                             </div>
                         </div>
                         {error && <p className="text-sm text-red-400 mb-4">{error}</p>}
@@ -272,15 +342,36 @@ const NewBooking = () => {
             </form>
 
             {confirmation && (
-                <div className="glass border border-green-500/30 rounded-2xl p-5">
+                <div className="glass border border-green-500/30 rounded-2xl p-5 mt-4 space-y-4">
                     <div className="flex items-start justify-between gap-4">
                         <div>
-                            <h2 className="text-lg font-semibold text-green-300">Booking Confirmation</h2>
+                            <h2 className="text-lg font-semibold text-green-300">Booking Saved Successfully!</h2>
                             <p className="text-sm text-gray-400 mt-1">
-                                {confirmation.booking_id} for {confirmation.customer_name} has been saved with status pending.
+                                Booking reference: <span className="font-mono text-white">{confirmation.booking_id}</span> for {confirmation.customer_name}.
+                            </p>
+                            <p className="text-sm text-gray-400 mt-1">
+                                Package: <span className="text-white">{confirmation.package?.name}</span> - <span className="text-[var(--accent)] font-semibold">{formatCurrency(confirmation.package?.price)}</span>
                             </p>
                         </div>
                         <button onClick={() => setConfirmation(null)} className="text-gray-400 hover:text-white"><X size={18} /></button>
+                    </div>
+
+                    <div className="pt-2 border-t border-[var(--glass-border)] flex items-center justify-between">
+                        <div>
+                            <span className="text-xs text-gray-500 block uppercase tracking-wider">Payment Status</span>
+                            <span className={`text-sm font-semibold ${paymentSuccess ? 'text-green-400' : 'text-amber-400'}`}>
+                                {paymentSuccess ? '● Paid (INR)' : '● Pending Payment'}
+                            </span>
+                        </div>
+                        {!paymentSuccess && (
+                            <button
+                                onClick={handlePayment}
+                                disabled={paying}
+                                className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-black font-bold text-sm hover:bg-opacity-90 transition-all disabled:opacity-50"
+                            >
+                                {paying ? 'Processing...' : `Pay Now ${formatCurrency(confirmation.package?.price)}`}
+                            </button>
+                        )}
                     </div>
                 </div>
             )}

@@ -17,6 +17,7 @@ import {
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import api from '../../services/api';
 import { useToast } from '../../components/Toast';
+import { loadRazorpayScript } from '../../utils/razorpayLoader';
 
 const chartColors = ['#FACC15', '#22C55E', '#38BDF8', '#A78BFA', '#F97316'];
 
@@ -78,19 +79,107 @@ const ShowroomOwnerDashboard = () => {
     const [dashboard, setDashboard] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const fetchDashboard = async () => {
+        try {
+            const res = await api.get('/showroom-owner/dashboard');
+            setDashboard(res.data);
+        } catch (error) {
+            toast(error.response?.data?.message || 'Failed to load dashboard', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchDashboard = async () => {
-            try {
-                const res = await api.get('/showroom-owner/dashboard');
-                setDashboard(res.data);
-            } catch (error) {
-                toast(error.response?.data?.message || 'Failed to load dashboard', 'error');
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchDashboard();
     }, [toast]);
+
+    const triggerPayment = async (booking) => {
+        try {
+            const isLoaded = await loadRazorpayScript();
+            if (!isLoaded) {
+                toast('Razorpay SDK failed to load. Are you online?', 'error');
+                return;
+            }
+
+            const orderRes = await api.post('/payments/create-order', {
+                booking_id: booking.id
+            });
+
+            const { order_id, amount, currency, key_id, is_mock } = orderRes.data;
+
+            if (is_mock) {
+                const proceed = window.confirm("Razorpay keys are missing from your backend .env file. Would you like to simulate a successful mock payment for testing?");
+                if (proceed) {
+                    try {
+                        const verifyRes = await api.post('/payments/verify', {
+                            razorpay_order_id: order_id,
+                            razorpay_payment_id: `mock_pay_${Date.now()}`,
+                            razorpay_signature: 'mock_signature',
+                            booking_id: booking.id
+                        });
+                        if (verifyRes.data.success) {
+                            toast('Mock payment completed and booking verified!', 'success');
+                            fetchDashboard();
+                        } else {
+                            toast('Mock payment verification failed.', 'error');
+                        }
+                    } catch (verifyErr) {
+                        toast(verifyErr.response?.data?.message || 'Mock verification failed.', 'error');
+                    }
+                }
+                return;
+            }
+
+            const options = {
+                key: key_id,
+                amount: amount,
+                currency: currency,
+                name: 'Revora Cinematic',
+                description: `Payment for booking`,
+                order_id: order_id,
+                handler: async function (response) {
+                    try {
+                        const verifyRes = await api.post('/payments/verify', {
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                            booking_id: booking.id
+                        });
+
+                        if (verifyRes.data.success) {
+                            toast('Payment successful and booking verified!', 'success');
+                            fetchDashboard();
+                        } else {
+                            toast('Payment verification failed.', 'error');
+                        }
+                    } catch (verifyErr) {
+                        toast(verifyErr.response?.data?.message || 'Payment verification failed.', 'error');
+                    }
+                },
+                prefill: {
+                    name: dashboard?.showroom?.name,
+                    contact: dashboard?.showroom?.contact_number,
+                },
+                theme: {
+                    color: '#3b82f6',
+                },
+                modal: {
+                    ondismiss: function() {
+                        toast('Payment cancelled by user.', 'error');
+                    }
+                }
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', function (response) {
+                toast(`Payment failed: ${response.error.description}`, 'error');
+            });
+            rzp.open();
+        } catch (err) {
+            toast(err.response?.data?.message || 'Failed to initiate payment.', 'error');
+        }
+    };
 
     const stats = dashboard?.stats || {};
     const showroom = dashboard?.showroom;
@@ -197,7 +286,25 @@ const ShowroomOwnerDashboard = () => {
                                             <p className="text-sm text-[var(--text-h)]">{formatDate(booking.booking_date)}</p>
                                             <p className="text-xs text-gray-500">{formatTime(booking.booking_date)}</p>
                                         </td>
-                                        <td className="px-5 py-4 text-sm text-gray-400 capitalize">{booking.payment_status || 'pending'}</td>
+                                        <td className="px-5 py-4">
+                                            {booking.payment_status === 'completed' ? (
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-green-500/10 text-green-400 border-green-500/30">
+                                                    Paid
+                                                </span>
+                                            ) : (
+                                                <div className="flex flex-col gap-1 items-start">
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
+                                                        Pending
+                                                    </span>
+                                                    <button
+                                                        onClick={() => triggerPayment(booking)}
+                                                        className="text-[11px] text-[var(--accent)] hover:underline font-semibold"
+                                                    >
+                                                        Pay Now
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </td>
                                         <td className="px-5 py-4"><StatusBadge status={booking.status} /></td>
                                     </tr>
                                 )) : (

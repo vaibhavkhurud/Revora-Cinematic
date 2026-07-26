@@ -8,6 +8,7 @@ import Showroom from '../models/Showroom.js';
 import Videographer from '../models/Videographer.js';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
+import Payment from '../models/Payment.js';
 
 const MAX_LIMIT = 50;
 const validStatuses = ['pending', 'assigned', 'arrived', 'shooting', 'editing', 'completed', 'cancelled'];
@@ -80,7 +81,7 @@ const serializeVideographer = (videographer) => {
     };
 };
 
-const serializeBooking = (booking, images = []) => {
+const serializeBooking = (booking, images = [], payment = null) => {
     const id = booking._id.toString();
 
     return {
@@ -108,6 +109,17 @@ const serializeBooking = (booking, images = []) => {
         status: booking.status,
         notes: booking.notes || '',
         photos: images.map(image => image.image_url),
+        payment: payment ? {
+            status: payment.status,
+            amount: payment.amount,
+            transaction_id: payment.transaction_id || null,
+            paid_at: payment.paid_at
+        } : {
+            status: 'pending',
+            amount: booking.package_id?.price || 0,
+            transaction_id: null,
+            paid_at: null
+        },
         created_at: booking.created_at,
         updated_at: booking.updated_at
     };
@@ -230,10 +242,6 @@ const validateBookingPayload = (body, files = []) => {
         return 'Shoot date and time slot must be in the future.';
     }
 
-    if (!files.length) {
-        return 'At least one vehicle photo is required.';
-    }
-
     return null;
 };
 
@@ -283,8 +291,16 @@ export const getBookings = async (req, res) => {
             .skip((parsedPage - 1) * parsedLimit)
             .limit(parsedLimit);
 
+        // Fetch payments for these bookings
+        const bookingIds = bookings.map(b => b._id);
+        const payments = await Payment.find({ booking_id: { $in: bookingIds } });
+        const paymentsMap = payments.reduce((acc, pay) => {
+            acc[pay.booking_id.toString()] = pay;
+            return acc;
+        }, {});
+
         res.json({
-            bookings: bookings.map(booking => serializeBooking(booking)),
+            bookings: bookings.map(booking => serializeBooking(booking, [], paymentsMap[booking._id.toString()])),
             statuses: validStatuses,
             pagination: {
                 total,
@@ -315,7 +331,8 @@ export const getBookingById = async (req, res) => {
         if (!booking) return res.status(404).json({ message: 'Booking not found.' });
 
         const images = await BookingImage.find({ booking_id: booking._id }).sort({ uploaded_at: 1 });
-        res.json({ booking: serializeBooking(booking, images) });
+        const payment = await Payment.findOne({ booking_id: booking._id });
+        res.json({ booking: serializeBooking(booking, images, payment) });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });
@@ -369,7 +386,7 @@ export const createBooking = async (req, res) => {
 
         const savedBooking = await newBooking.save();
 
-        const savedImages = await Promise.all(req.files.map(file => {
+        const savedImages = await Promise.all((req.files || []).map(file => {
             const newImage = new BookingImage({
                 booking_id: savedBooking._id,
                 image_url: `/uploads/bookings/${path.basename(file.filename)}`,

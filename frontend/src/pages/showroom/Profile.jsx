@@ -131,7 +131,7 @@ const ShowroomProfile = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full min-h-[50vh]">
-                <Loader size={48} className="animate-spin text-[var(--accent)]" />
+                <Loader size={48} className="animate-spin text-(--accent)" />
             </div>
         );
     }

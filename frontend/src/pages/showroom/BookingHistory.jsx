@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ArrowDownUp, CalendarDays, ChevronLeft, ChevronRight, Filter, Search } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../components/Toast';
+import { loadRazorpayScript } from '../../utils/razorpayLoader';
 
 const statuses = ['all', 'pending', 'assigned', 'arrived', 'shooting', 'editing', 'completed'];
 
@@ -82,6 +83,93 @@ const BookingHistory = () => {
         }
     };
 
+    const triggerPayment = async (booking) => {
+        try {
+            const isLoaded = await loadRazorpayScript();
+            if (!isLoaded) {
+                toast('Razorpay SDK failed to load. Are you online?', 'error');
+                return;
+            }
+
+            const orderRes = await api.post('/payments/create-order', {
+                booking_id: booking.id
+            });
+
+            const { order_id, amount, currency, key_id, is_mock } = orderRes.data;
+
+            if (is_mock) {
+                const proceed = window.confirm("Razorpay keys are missing from your backend .env file. Would you like to simulate a successful mock payment for testing?");
+                if (proceed) {
+                    try {
+                        const verifyRes = await api.post('/payments/verify', {
+                            razorpay_order_id: order_id,
+                            razorpay_payment_id: `mock_pay_${Date.now()}`,
+                            razorpay_signature: 'mock_signature',
+                            booking_id: booking.id
+                        });
+                        if (verifyRes.data.success) {
+                            toast('Mock payment completed and booking verified!', 'success');
+                            fetchBookings(pagination.page);
+                        } else {
+                            toast('Mock payment verification failed.', 'error');
+                        }
+                    } catch (verifyErr) {
+                        toast(verifyErr.response?.data?.message || 'Mock verification failed.', 'error');
+                    }
+                }
+                return;
+            }
+
+            const options = {
+                key: key_id,
+                amount: amount,
+                currency: currency,
+                name: 'Revora Cinematic',
+                description: `Payment for booking ${booking.booking_id}`,
+                order_id: order_id,
+                handler: async function (response) {
+                    try {
+                        const verifyRes = await api.post('/payments/verify', {
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                            booking_id: booking.id
+                        });
+
+                        if (verifyRes.data.success) {
+                            toast('Payment successful and booking verified!', 'success');
+                            fetchBookings(pagination.page);
+                        } else {
+                            toast('Payment verification failed.', 'error');
+                        }
+                    } catch (verifyErr) {
+                        toast(verifyErr.response?.data?.message || 'Payment verification failed.', 'error');
+                    }
+                },
+                prefill: {
+                    name: booking.showroom?.name || booking.customer_name,
+                    contact: booking.showroom?.contact_number || booking.customer_mobile,
+                },
+                theme: {
+                    color: '#3b82f6',
+                },
+                modal: {
+                    ondismiss: function() {
+                        toast('Payment cancelled by user.', 'error');
+                    }
+                }
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', function (response) {
+                toast(`Payment failed: ${response.error.description}`, 'error');
+            });
+            rzp.open();
+        } catch (err) {
+            toast(err.response?.data?.message || 'Failed to initiate payment.', 'error');
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -133,13 +221,14 @@ const BookingHistory = () => {
                                 <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider px-5 py-4">Package</th>
                                 <SortableHeader label="Date" sortKey="booking_date" sortBy={sortBy} sortOrder={sortOrder} onSort={setSort} />
                                 <SortableHeader label="Status" sortKey="status" sortBy={sortBy} sortOrder={sortOrder} onSort={setSort} />
+                                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider px-5 py-4">Payment</th>
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
                                 [...Array(6)].map((_, row) => (
                                     <tr key={row} className="border-b border-[var(--glass-border)]">
-                                        {[...Array(6)].map((__, cell) => (
+                                        {[...Array(7)].map((__, cell) => (
                                             <td key={cell} className="px-5 py-4">
                                                 <div className="h-4 w-24 rounded bg-[var(--glass-bg)] animate-pulse" />
                                             </td>
@@ -148,7 +237,7 @@ const BookingHistory = () => {
                                 ))
                             ) : bookings.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="py-16 text-center text-gray-500">
+                                    <td colSpan={7} className="py-16 text-center text-gray-500">
                                         <CalendarDays size={28} className="mx-auto mb-3 text-gray-600" />
                                         <p className="text-base font-medium text-gray-400">No bookings found</p>
                                         <p className="text-sm mt-1">Create a booking or adjust your search and filters.</p>
@@ -177,6 +266,25 @@ const BookingHistory = () => {
                                         <p className="text-xs text-gray-500 mt-0.5">{formatTime(booking.booking_date)}</p>
                                     </td>
                                     <td className="px-5 py-4"><StatusBadge status={booking.status} /></td>
+                                    <td className="px-5 py-4">
+                                        {booking.payment?.status === 'completed' ? (
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border capitalize bg-green-500/10 text-green-400 border-green-500/30">
+                                                Paid
+                                            </span>
+                                        ) : (
+                                            <div className="flex flex-col gap-1 items-start">
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border capitalize bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
+                                                    Pending
+                                                </span>
+                                                <button
+                                                    onClick={() => triggerPayment(booking)}
+                                                    className="text-[11px] text-[var(--accent)] hover:underline font-semibold"
+                                                >
+                                                    Pay Now
+                                                </button>
+                                            </div>
+                                        )}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>

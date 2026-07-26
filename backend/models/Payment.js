@@ -26,6 +26,18 @@ const paymentSchema = new mongoose.Schema({
         unique: true,
         sparse: true // Allows nulls to not clash on unique constraint
     },
+    razorpay_order_id: {
+        type: String,
+        default: null
+    },
+    razorpay_payment_id: {
+        type: String,
+        default: null
+    },
+    razorpay_signature: {
+        type: String,
+        default: null
+    },
     paid_at: {
         type: Date,
         default: null
