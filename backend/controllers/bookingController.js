@@ -454,8 +454,18 @@ export const getAdminBookings = async (req, res) => {
             .skip((parsedPage - 1) * parsedLimit)
             .limit(parsedLimit);
 
+        // Fetch payments for these bookings
+        const bookingIds = bookings.map(b => b._id);
+        const payments = await Payment.find({ booking_id: { $in: bookingIds } });
+        const paymentsMap = payments.reduce((acc, pay) => {
+            acc[pay.booking_id.toString()] = pay;
+            return acc;
+        }, {});
+
+        const serialized = bookings.map(booking => serializeBooking(booking, [], paymentsMap[booking._id.toString()]));
+
         res.json({
-            bookings: bookings.map(booking => serializeBooking(booking)),
+            bookings: serialized,
             statuses: validStatuses,
             pagination: {
                 total,

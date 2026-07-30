@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
     CalendarCheck,
+    CheckCircle2,
     Clock,
     CreditCard,
     Film,
@@ -18,6 +19,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import api from '../../services/api';
 import { useToast } from '../../components/Toast';
 import { loadRazorpayScript } from '../../utils/razorpayLoader';
+import PayNowButton from '../../components/PayNowButton';
 
 const chartColors = ['#FACC15', '#22C55E', '#38BDF8', '#A78BFA', '#F97316'];
 
@@ -78,6 +80,7 @@ const ShowroomOwnerDashboard = () => {
     const { toast } = useToast();
     const [dashboard, setDashboard] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [payingId, setPayingId] = useState(null);
 
     const fetchDashboard = async () => {
         try {
@@ -95,6 +98,7 @@ const ShowroomOwnerDashboard = () => {
     }, [toast]);
 
     const triggerPayment = async (booking) => {
+        setPayingId(booking.id);
         try {
             const isLoaded = await loadRazorpayScript();
             if (!isLoaded) {
@@ -178,6 +182,8 @@ const ShowroomOwnerDashboard = () => {
             rzp.open();
         } catch (err) {
             toast(err.response?.data?.message || 'Failed to initiate payment.', 'error');
+        } finally {
+            setPayingId(null);
         }
     };
 
@@ -288,20 +294,21 @@ const ShowroomOwnerDashboard = () => {
                                         </td>
                                         <td className="px-5 py-4">
                                             {booking.payment_status === 'completed' ? (
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-green-500/10 text-green-400 border-green-500/30">
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
+                                                    <CheckCircle2 size={13} className="text-emerald-400" />
                                                     Paid
                                                 </span>
                                             ) : (
-                                                <div className="flex flex-col gap-1 items-start">
-                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
-                                                        Pending
+                                                <div className="flex flex-col gap-1.5 items-start">
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border bg-amber-500/10 text-amber-400 border-amber-500/30">
+                                                        Unpaid
                                                     </span>
-                                                    <button
+                                                    <PayNowButton
+                                                        size="sm"
+                                                        amount={booking.price}
+                                                        loading={payingId === booking.id}
                                                         onClick={() => triggerPayment(booking)}
-                                                        className="text-[11px] text-[var(--accent)] hover:underline font-semibold"
-                                                    >
-                                                        Pay Now
-                                                    </button>
+                                                    />
                                                 </div>
                                             )}
                                         </td>

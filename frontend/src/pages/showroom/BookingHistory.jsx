@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArrowDownUp, CalendarDays, ChevronLeft, ChevronRight, Filter, Search } from 'lucide-react';
+import { ArrowDownUp, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Filter, Search, CreditCard } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../components/Toast';
 import { loadRazorpayScript } from '../../utils/razorpayLoader';
+import PayNowButton from '../../components/PayNowButton';
 
 const statuses = ['all', 'pending', 'assigned', 'arrived', 'shooting', 'editing', 'completed'];
 
@@ -43,9 +44,11 @@ const BookingHistory = () => {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState('all');
+    const [paymentFilter, setPaymentFilter] = useState('all');
     const [sortBy, setSortBy] = useState('created_at');
     const [sortOrder, setSortOrder] = useState('desc');
     const [pagination, setPagination] = useState({ total: 0, page: 1, totalPages: 1 });
+    const [payingId, setPayingId] = useState(null);
 
     const fetchBookings = useCallback(async (page = 1) => {
         setLoading(true);
@@ -84,6 +87,7 @@ const BookingHistory = () => {
     };
 
     const triggerPayment = async (booking) => {
+        setPayingId(booking.id);
         try {
             const isLoaded = await loadRazorpayScript();
             if (!isLoaded) {
@@ -167,15 +171,23 @@ const BookingHistory = () => {
             rzp.open();
         } catch (err) {
             toast(err.response?.data?.message || 'Failed to initiate payment.', 'error');
+        } finally {
+            setPayingId(null);
         }
     };
+
+    const filteredBookings = bookings.filter(booking => {
+        if (paymentFilter === 'paid') return booking.payment?.status === 'completed';
+        if (paymentFilter === 'pending') return booking.payment?.status !== 'completed';
+        return true;
+    });
 
     return (
         <div className="space-y-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-[var(--text-h)]">Booking History</h1>
-                    <p className="text-sm text-gray-400 mt-1">Search, filter, sort, and review all showroom bookings.</p>
+                    <p className="text-sm text-gray-400 mt-1">Search, filter, sort, and review all showroom bookings & payment status.</p>
                 </div>
                 <div className="glass border border-[var(--glass-border)] rounded-xl px-4 py-3 text-sm text-[var(--accent)] font-semibold">
                     {pagination.total} Total Bookings
@@ -192,21 +204,49 @@ const BookingHistory = () => {
                         className="w-full pl-9 pr-4 py-2.5 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl text-sm text-[var(--text-h)] focus:outline-none focus:border-[var(--accent)] placeholder-gray-500"
                     />
                 </div>
-                <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                    <Filter size={16} className="text-gray-400 shrink-0" />
-                    {statuses.map(item => (
-                        <button
-                            key={item}
-                            onClick={() => setStatus(item)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize whitespace-nowrap transition-all ${
-                                status === item
-                                    ? 'bg-[var(--accent)] text-black'
-                                    : 'text-gray-400 hover:text-white bg-[var(--glass-bg)] border border-[var(--glass-border)]'
-                            }`}
-                        >
-                            {item}
-                        </button>
-                    ))}
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                        <Filter size={16} className="text-gray-400 shrink-0" />
+                        {statuses.map(item => (
+                            <button
+                                key={item}
+                                onClick={() => setStatus(item)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize whitespace-nowrap transition-all ${
+                                    status === item
+                                        ? 'bg-[var(--accent)] text-black font-semibold'
+                                        : 'text-gray-400 hover:text-white bg-[var(--glass-bg)] border border-[var(--glass-border)]'
+                                }`}
+                            >
+                                {item}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="h-6 w-px bg-[var(--glass-border)] hidden xl:block" />
+
+                    {/* Payment Filter */}
+                    <div className="flex items-center gap-1.5 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl p-1 text-xs">
+                        <span className="text-gray-400 px-2 flex items-center gap-1">
+                            <CreditCard size={13} className="text-indigo-400" /> Payment:
+                        </span>
+                        {[
+                            { id: 'all', label: 'All' },
+                            { id: 'paid', label: 'Paid' },
+                            { id: 'pending', label: 'Pending' }
+                        ].map(f => (
+                            <button
+                                key={f.id}
+                                onClick={() => setPaymentFilter(f.id)}
+                                className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
+                                    paymentFilter === f.id
+                                        ? f.id === 'paid' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : f.id === 'pending' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'bg-[var(--accent)]/20 text-[var(--accent)] border border-[var(--accent)]/40'
+                                        : 'text-gray-400 hover:text-white'
+                                }`}
+                            >
+                                {f.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </section>
 
@@ -235,15 +275,15 @@ const BookingHistory = () => {
                                         ))}
                                     </tr>
                                 ))
-                            ) : bookings.length === 0 ? (
+                            ) : filteredBookings.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} className="py-16 text-center text-gray-500">
                                         <CalendarDays size={28} className="mx-auto mb-3 text-gray-600" />
                                         <p className="text-base font-medium text-gray-400">No bookings found</p>
-                                        <p className="text-sm mt-1">Create a booking or adjust your search and filters.</p>
+                                        <p className="text-sm mt-1">Create a booking or adjust your search and payment filters.</p>
                                     </td>
                                 </tr>
-                            ) : bookings.map(booking => (
+                            ) : filteredBookings.map(booking => (
                                 <tr key={booking.id} className="border-b border-[var(--glass-border)] hover:bg-[var(--glass-bg)] transition-colors">
                                     <td className="px-5 py-4">
                                         <p className="text-sm font-semibold text-[var(--accent)]">{booking.booking_id}</p>
@@ -268,20 +308,28 @@ const BookingHistory = () => {
                                     <td className="px-5 py-4"><StatusBadge status={booking.status} /></td>
                                     <td className="px-5 py-4">
                                         {booking.payment?.status === 'completed' ? (
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border capitalize bg-green-500/10 text-green-400 border-green-500/30">
-                                                Paid
-                                            </span>
-                                        ) : (
                                             <div className="flex flex-col gap-1 items-start">
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border capitalize bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
-                                                    Pending
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border capitalize bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
+                                                    <CheckCircle2 size={13} className="text-emerald-400" />
+                                                    Paid
                                                 </span>
-                                                <button
+                                                {booking.payment?.amount && (
+                                                    <span className="text-[11px] font-mono text-gray-400">
+                                                        ₹{Number(booking.payment.amount).toLocaleString('en-IN')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col gap-1.5 items-start">
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border bg-amber-500/10 text-amber-400 border-amber-500/30">
+                                                    Unpaid
+                                                </span>
+                                                <PayNowButton
+                                                    size="sm"
+                                                    amount={booking.package?.price}
+                                                    loading={payingId === booking.id}
                                                     onClick={() => triggerPayment(booking)}
-                                                    className="text-[11px] text-[var(--accent)] hover:underline font-semibold"
-                                                >
-                                                    Pay Now
-                                                </button>
+                                                />
                                             </div>
                                         )}
                                     </td>

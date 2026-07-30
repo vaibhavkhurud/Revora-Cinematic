@@ -1,13 +1,14 @@
 import Showroom from '../models/Showroom.js';
 import Notification from '../models/Notification.js';
+import Booking from '../models/Booking.js';
+import Payment from '../models/Payment.js';
 
-// @desc    Get all showrooms with owner info + filters
+// @desc    Get all showrooms with owner info + filters + payment status
 // @route   GET /api/showrooms
 // @access  Super Admin
 export const getAllShowrooms = async (req, res) => {
     try {
-        const { status, search, page = 1, limit = 10 } = req.query;
-        const offset = (parseInt(page) - 1) * parseInt(limit);
+        const { status, payment_status, search, page = 1, limit = 10 } = req.query;
 
         let query = {};
 
@@ -24,41 +25,135 @@ export const getAllShowrooms = async (req, res) => {
             .sort({ created_at: -1 });
 
         const showroomsData = await showroomsQuery.exec();
-        
-        // Manual search filtering after population because Mongoose doesn't support regex search on populated fields easily in a single query
+
+        // Fetch bookings and payments for all returned showrooms
+        const showroomIds = showroomsData.map(s => s._id);
+        const allBookings = await Booking.find({ showroom_id: { $in: showroomIds } }).populate('package_id');
+        const allBookingIds = allBookings.map(b => b._id);
+        const allPayments = await Payment.find({ booking_id: { $in: allBookingIds } });
+
+        const paymentsByBookingId = allPayments.reduce((acc, p) => {
+            acc[p.booking_id.toString()] = p;
+            return acc;
+        }, {});
+
+        const showroomPaymentMap = {};
+        for (const s of showroomsData) {
+            const sId = s._id.toString();
+            const sBookings = allBookings.filter(b => b.showroom_id && b.showroom_id.toString() === sId);
+            let paidCount = 0;
+            let pendingCount = 0;
+            let totalPaid = 0;
+            let totalPending = 0;
+            const bookingDetails = [];
+
+            for (const b of sBookings) {
+                const pay = paymentsByBookingId[b._id.toString()];
+                const isPaid = pay && pay.status === 'completed';
+                const pkgPrice = b.package_id?.price || pay?.amount || 0;
+
+                if (isPaid) {
+                    paidCount++;
+                    totalPaid += (pay.amount || pkgPrice);
+                } else {
+                    pendingCount++;
+                    totalPending += pkgPrice;
+                }
+
+                bookingDetails.push({
+                    id: b._id,
+                    booking_id: b.booking_id,
+                    customer_name: b.customer_name,
+                    package_name: b.package_id?.name || 'Custom Package',
+                    amount: pkgPrice,
+                    payment_status: isPaid ? 'completed' : (pay?.status || 'pending'),
+                    transaction_id: pay?.transaction_id || pay?.razorpay_payment_id || null,
+                    paid_at: pay?.paid_at || null,
+                    created_at: b.created_at
+                });
+            }
+
+            let overallPaymentStatus = 'no_bookings';
+            if (sBookings.length > 0) {
+                if (pendingCount === 0) {
+                    overallPaymentStatus = 'all_paid';
+                } else {
+                    overallPaymentStatus = 'pending_payment';
+                }
+            }
+
+            showroomPaymentMap[sId] = {
+                total_bookings: sBookings.length,
+                paid_bookings_count: paidCount,
+                pending_bookings_count: pendingCount,
+                total_paid_amount: totalPaid,
+                total_pending_amount: totalPending,
+                payment_status: overallPaymentStatus,
+                bookings: bookingDetails
+            };
+        }
+
+        // Search and Payment Status Filtering
         let filteredShowrooms = showroomsData;
+
         if (search) {
             const searchRegex = new RegExp(search, 'i');
-            filteredShowrooms = showroomsData.filter(s => {
+            filteredShowrooms = filteredShowrooms.filter(s => {
                 return searchRegex.test(s.name) ||
                        (s.owner_id && (searchRegex.test(s.owner_id.name) || searchRegex.test(s.owner_id.email)));
             });
         }
 
-        const total = filteredShowrooms.length;
-        const paginatedShowrooms = filteredShowrooms.slice(offset, offset + parseInt(limit));
+        if (payment_status && payment_status !== 'all') {
+            filteredShowrooms = filteredShowrooms.filter(s => {
+                const payStats = showroomPaymentMap[s._id.toString()];
+                if (payment_status === 'paid') return payStats?.payment_status === 'all_paid';
+                if (payment_status === 'pending') return payStats?.payment_status === 'pending_payment';
+                return true;
+            });
+        }
 
-        const formattedShowrooms = paginatedShowrooms.map(s => ({
-            id: s._id,
-            name: s.name,
-            address: s.address,
-            map_link: s.map_link,
-            contact_number: s.contact_number,
-            status: s.status,
-            rejection_reason: s.rejection_reason,
-            created_at: s.created_at,
-            owner_id: s.owner_id ? s.owner_id._id : null,
-            owner_name: s.owner_id ? s.owner_id.name : null,
-            owner_email: s.owner_id ? s.owner_id.email : null
-        }));
+        const parsedPage = Math.max(parseInt(page, 10) || 1, 1);
+        const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
+        const offset = (parsedPage - 1) * parsedLimit;
+
+        const total = filteredShowrooms.length;
+        const paginatedShowrooms = filteredShowrooms.slice(offset, offset + parsedLimit);
+
+        const formattedShowrooms = paginatedShowrooms.map(s => {
+            const payStats = showroomPaymentMap[s._id.toString()] || {
+                total_bookings: 0,
+                paid_bookings_count: 0,
+                pending_bookings_count: 0,
+                total_paid_amount: 0,
+                total_pending_amount: 0,
+                payment_status: 'no_bookings',
+                bookings: []
+            };
+
+            return {
+                id: s._id,
+                name: s.name,
+                address: s.address,
+                map_link: s.map_link,
+                contact_number: s.contact_number,
+                status: s.status,
+                rejection_reason: s.rejection_reason,
+                created_at: s.created_at,
+                owner_id: s.owner_id ? s.owner_id._id : null,
+                owner_name: s.owner_id ? s.owner_id.name : null,
+                owner_email: s.owner_id ? s.owner_id.email : null,
+                payment_summary: payStats
+            };
+        });
 
         res.json({
             showrooms: formattedShowrooms,
             pagination: {
                 total,
-                page: parseInt(page),
-                limit: parseInt(limit),
-                totalPages: Math.ceil(total / parseInt(limit))
+                page: parsedPage,
+                limit: parsedLimit,
+                totalPages: Math.max(Math.ceil(total / parsedLimit), 1)
             }
         });
     } catch (error) {

@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
     ArrowDownUp,
     CalendarCheck,
+    CheckCircle2,
     ChevronLeft,
     ChevronRight,
+    CreditCard,
     Search,
     UserCheck,
     X
@@ -51,6 +53,7 @@ const Bookings = () => {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState('all');
+    const [paymentFilter, setPaymentFilter] = useState('all');
     const [sortBy, setSortBy] = useState('created_at');
     const [sortOrder, setSortOrder] = useState('desc');
     const [pagination, setPagination] = useState({ total: 0, page: 1, totalPages: 1 });
@@ -114,12 +117,18 @@ const Bookings = () => {
         }
     };
 
+    const filteredBookings = bookings.filter(booking => {
+        if (paymentFilter === 'paid') return booking.payment?.status === 'completed';
+        if (paymentFilter === 'pending') return booking.payment?.status !== 'completed';
+        return true;
+    });
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-[var(--text-h)]">Bookings</h1>
-                    <p className="text-sm text-gray-400 mt-1">Manage showroom bookings, assignments, and production workflow.</p>
+                    <p className="text-sm text-gray-400 mt-1">Manage showroom bookings, assignments, production workflow, and payment status.</p>
                 </div>
                 <div className="glass border border-[var(--glass-border)] rounded-xl px-4 py-3 text-sm text-[var(--accent)] font-semibold">
                     {pagination.total} Total Bookings
@@ -136,20 +145,48 @@ const Bookings = () => {
                         className="w-full pl-9 pr-4 py-2.5 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl text-sm text-[var(--text-h)] focus:outline-none focus:border-[var(--accent)] placeholder-gray-500"
                     />
                 </div>
-                <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                    {statuses.map(item => (
-                        <button
-                            key={item}
-                            onClick={() => setStatus(item)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize whitespace-nowrap transition-all ${
-                                status === item
-                                    ? 'bg-[var(--accent)] text-black'
-                                    : 'text-gray-400 hover:text-white bg-[var(--glass-bg)] border border-[var(--glass-border)]'
-                            }`}
-                        >
-                            {item}
-                        </button>
-                    ))}
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                        {statuses.map(item => (
+                            <button
+                                key={item}
+                                onClick={() => setStatus(item)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize whitespace-nowrap transition-all ${
+                                    status === item
+                                        ? 'bg-[var(--accent)] text-black font-semibold'
+                                        : 'text-gray-400 hover:text-white bg-[var(--glass-bg)] border border-[var(--glass-border)]'
+                                }`}
+                            >
+                                {item}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="h-6 w-px bg-[var(--glass-border)] hidden xl:block" />
+
+                    {/* Payment Filter */}
+                    <div className="flex items-center gap-1.5 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl p-1 text-xs">
+                        <span className="text-gray-400 px-2 flex items-center gap-1">
+                            <CreditCard size={13} className="text-indigo-400" /> Payment:
+                        </span>
+                        {[
+                            { id: 'all', label: 'All' },
+                            { id: 'paid', label: 'Paid' },
+                            { id: 'pending', label: 'Pending' }
+                        ].map(f => (
+                            <button
+                                key={f.id}
+                                onClick={() => setPaymentFilter(f.id)}
+                                className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
+                                    paymentFilter === f.id
+                                        ? f.id === 'paid' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-semibold' : f.id === 'pending' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 font-semibold' : 'bg-[var(--accent)]/20 text-[var(--accent)] border border-[var(--accent)]/40 font-semibold'
+                                        : 'text-gray-400 hover:text-white'
+                                }`}
+                            >
+                                {f.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </section>
 
@@ -166,6 +203,7 @@ const Bookings = () => {
                                 <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider px-5 py-4">Videographer</th>
                                 <SortableHeader label="Date" sortKey="booking_date" sortBy={sortBy} sortOrder={sortOrder} onSort={setSort} />
                                 <SortableHeader label="Status" sortKey="status" sortBy={sortBy} sortOrder={sortOrder} onSort={setSort} />
+                                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider px-5 py-4">Payment</th>
                                 <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider px-5 py-4">Actions</th>
                             </tr>
                         </thead>
@@ -173,22 +211,22 @@ const Bookings = () => {
                             {loading ? (
                                 [...Array(6)].map((_, row) => (
                                     <tr key={row} className="border-b border-[var(--glass-border)]">
-                                        {[...Array(9)].map((__, cell) => (
+                                        {[...Array(10)].map((__, cell) => (
                                             <td key={cell} className="px-5 py-4">
                                                 <div className="h-4 w-24 rounded bg-[var(--glass-bg)] animate-pulse" />
                                             </td>
                                         ))}
                                     </tr>
                                 ))
-                            ) : bookings.length === 0 ? (
+                            ) : filteredBookings.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} className="py-16 text-center text-gray-500">
+                                    <td colSpan={10} className="py-16 text-center text-gray-500">
                                         <CalendarCheck size={28} className="mx-auto mb-3 text-gray-600" />
                                         <p className="text-base font-medium text-gray-400">No bookings found</p>
-                                        <p className="text-sm mt-1">Try adjusting your search or filters.</p>
+                                        <p className="text-sm mt-1">Try adjusting your search or payment filters.</p>
                                     </td>
                                 </tr>
-                            ) : bookings.map(booking => (
+                            ) : filteredBookings.map(booking => (
                                 <tr key={booking.id} className="border-b border-[var(--glass-border)] hover:bg-[var(--glass-bg)] transition-colors">
                                     <td className="px-5 py-4">
                                         <p className="text-sm font-semibold text-[var(--accent)]">{booking.booking_id}</p>
@@ -231,6 +269,37 @@ const Bookings = () => {
                                                 ))}
                                             </select>
                                         </div>
+                                    </td>
+                                    <td className="px-5 py-4 min-w-[140px]">
+                                        {booking.payment?.status === 'completed' ? (
+                                            <div className="flex flex-col gap-1 items-start">
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                                                    <CheckCircle2 size={13} className="text-emerald-400" />
+                                                    Paid
+                                                </span>
+                                                {booking.payment?.amount && (
+                                                    <span className="text-[11px] font-mono text-gray-400">
+                                                        ₹{Number(booking.payment.amount).toLocaleString('en-IN')}
+                                                    </span>
+                                                )}
+                                                {booking.payment?.transaction_id && (
+                                                    <span className="text-[10px] font-mono text-gray-500 truncate max-w-[130px]" title={booking.payment.transaction_id}>
+                                                        Txn: {booking.payment.transaction_id}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col gap-1 items-start">
+                                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                                                    Pending
+                                                </span>
+                                                {booking.package?.price && (
+                                                    <span className="text-[11px] font-mono text-gray-400">
+                                                        ₹{Number(booking.package.price).toLocaleString('en-IN')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="px-5 py-4">
                                         <div className="flex items-center gap-2">

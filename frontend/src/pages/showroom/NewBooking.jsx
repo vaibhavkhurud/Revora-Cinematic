@@ -3,6 +3,7 @@ import { CalendarPlus, CheckCircle, ImagePlus, Package, UploadCloud, X } from 'l
 import api from '../../services/api';
 import { useToast } from '../../components/Toast';
 import { loadRazorpayScript } from '../../utils/razorpayLoader';
+import PayNowButton from '../../components/PayNowButton';
 
 const initialForm = {
     customer_name: '',
@@ -364,13 +365,12 @@ const NewBooking = () => {
                             </span>
                         </div>
                         {!paymentSuccess && (
-                            <button
+                            <PayNowButton
+                                size="md"
+                                amount={confirmation.package?.price}
+                                loading={paying}
                                 onClick={handlePayment}
-                                disabled={paying}
-                                className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-black font-bold text-sm hover:bg-opacity-90 transition-all disabled:opacity-50"
-                            >
-                                {paying ? 'Processing...' : `Pay Now ${formatCurrency(confirmation.package?.price)}`}
-                            </button>
+                            />
                         )}
                     </div>
                 </div>
