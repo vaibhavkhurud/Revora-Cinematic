@@ -5,6 +5,8 @@ import Videographer from '../models/Videographer.js';
 import Booking from '../models/Booking.js';
 import Package from '../models/Package.js';
 import SystemSetting from '../models/SystemSetting.js';
+import Withdrawal from '../models/Withdrawal.js';
+import Notification from '../models/Notification.js';
 
 // @desc    Add a new videographer
 // @route   POST /api/admin/videographers
@@ -309,6 +311,99 @@ export const updateSystemSettings = async (req, res) => {
             message: 'System settings updated successfully',
             settings
         });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Get all videographer withdrawals
+// @route   GET /api/admin/withdrawals
+// @access  Private/SuperAdmin
+export const getAllWithdrawals = async (req, res) => {
+    try {
+        const { status } = req.query;
+        let query = {};
+        if (status && status !== 'all') {
+            query.status = status;
+        }
+
+        const withdrawals = await Withdrawal.find(query)
+            .populate({
+                path: 'videographer_id',
+                select: 'user_id phone payout_profile',
+                populate: { path: 'user_id', select: 'name email' }
+            })
+            .sort({ requested_at: -1 });
+
+        res.json({ withdrawals });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Update withdrawal status
+// @route   PATCH /api/admin/withdrawals/:id/status
+// @access  Private/SuperAdmin
+export const updateWithdrawalStatus = async (req, res) => {
+    try {
+        const { status, admin_note, transaction_id } = req.body;
+        
+        if (!['approved', 'rejected', 'completed'].includes(status)) {
+            return res.status(400).json({ message: 'Invalid status' });
+        }
+
+        const withdrawal = await Withdrawal.findById(req.params.id)
+            .populate({
+                path: 'videographer_id',
+                select: 'user_id',
+                populate: { path: 'user_id', select: 'name' }
+            });
+            
+        if (!withdrawal) {
+            return res.status(404).json({ message: 'Withdrawal request not found' });
+        }
+
+        const oldStatus = withdrawal.status;
+        
+        withdrawal.status = status;
+        if (admin_note !== undefined) withdrawal.admin_note = admin_note;
+        if (transaction_id !== undefined) withdrawal.transaction_id = transaction_id;
+        
+        if (status === 'completed' || status === 'approved' || status === 'rejected') {
+            withdrawal.processed_at = new Date();
+            withdrawal.processed_by = req.user._id;
+        }
+
+        await withdrawal.save();
+
+        // Notify Videographer
+        if (oldStatus !== status) {
+            let title = '';
+            let message = '';
+            
+            if (status === 'approved') {
+                title = 'Withdrawal Approved';
+                message = `Your withdrawal request for ₹${withdrawal.amount} has been approved and is being processed.`;
+            } else if (status === 'completed') {
+                title = 'Withdrawal Completed';
+                message = `Your withdrawal of ₹${withdrawal.amount} has been successfully transferred.`;
+            } else if (status === 'rejected') {
+                title = 'Withdrawal Rejected';
+                message = `Your withdrawal request for ₹${withdrawal.amount} was rejected. ${admin_note ? 'Reason: ' + admin_note : ''}`;
+            }
+
+            if (title && withdrawal.videographer_id?.user_id?._id) {
+                await new Notification({
+                    user_id: withdrawal.videographer_id.user_id._id,
+                    title,
+                    message
+                }).save();
+            }
+        }
+
+        res.json({ message: 'Withdrawal status updated successfully', withdrawal });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });

@@ -76,6 +76,7 @@ const AdminEarnings = () => {
 
     const {
         total_revenue = 0,
+        total_admin_earnings = 0,
         total_completed_shoots = 0,
         package_breakdown = [],
         videographer_breakdown = [],
@@ -155,6 +156,12 @@ const AdminEarnings = () => {
                     accent
                 />
                 <StatCard
+                    title="Net Admin Earnings"
+                    value={formatCurrency(total_admin_earnings)}
+                    icon={IndianRupee}
+                    subtitle="Revenue after videographer cuts"
+                />
+                <StatCard
                     title="Completed Bookings"
                     value={total_completed_shoots}
                     icon={CheckCircle}
@@ -198,14 +205,14 @@ const AdminEarnings = () => {
                                         <div className="flex items-center justify-between mb-1.5">
                                             <div className="flex items-center gap-2">
                                                 <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${colorClass}`}></div>
-                                                <span className="text-sm font-medium text-[var(--text-color)]">{pkg.package_name}</span>
-                                                <span className="text-xs text-gray-500 px-1.5 py-0.5 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-full">
-                                                    {pkg.count} shoots
+                                                <span className="text-sm font-semibold text-[var(--text-color)]">{pkg.package_name}</span>
+                                                <span className="text-xs text-gray-500 bg-[var(--glass-bg)] border border-[var(--glass-border)] px-2 py-0.5 rounded-full">
+                                                    {pkg.count} shoot{pkg.count !== 1 ? 's' : ''}
                                                 </span>
                                             </div>
                                             <div className="text-right">
-                                                <span className="text-sm font-bold text-[var(--text-color)]">{formatCurrency(pkg.total)}</span>
-                                                <span className="text-xs text-gray-500 ml-2">({pct}%)</span>
+                                                <p className="text-sm font-bold text-[var(--text-color)]">{formatCurrency(pkg.total)} Total</p>
+                                                <p className="text-xs text-emerald-400 font-mono">{formatCurrency(pkg.admin_total)} Net</p>
                                             </div>
                                         </div>
                                         <div className="h-2 bg-[var(--glass-bg)] rounded-full overflow-hidden">
@@ -277,33 +284,32 @@ const AdminEarnings = () => {
                                 <tr className="border-b border-[var(--glass-border)]">
                                     <th className="text-left px-5 py-3 text-gray-400 font-medium">Package</th>
                                     <th className="text-center px-5 py-3 text-gray-400 font-medium">Shoots</th>
-                                    <th className="text-right px-5 py-3 text-gray-400 font-medium">Price/Shoot</th>
-                                    <th className="text-right px-5 py-3 text-gray-400 font-medium">Revenue</th>
-                                    <th className="text-right px-5 py-3 text-gray-400 font-medium">Share</th>
+                                    <th className="text-right px-5 py-3 text-gray-400 font-medium">Gross Revenue</th>
+                                    <th className="text-right px-5 py-3 text-emerald-400/80 font-medium">Net Admin Earning</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {package_breakdown.map((pkg) => {
-                                    const pct = total_revenue > 0 ? ((pkg.total / total_revenue) * 100).toFixed(1) : '0.0';
-                                    return (
-                                        <tr key={pkg.package_id} className="border-b border-[var(--glass-border)]/50 hover:bg-[var(--glass-bg)] transition-colors">
-                                            <td className="px-5 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    <Package size={15} className="text-[var(--accent)]" />
-                                                    <span className="font-medium text-[var(--text-color)]">{pkg.package_name}</span>
-                                                </div>
-                                            </td>
-                                            <td className="text-center px-5 py-4 text-[var(--text-color)] font-semibold">{pkg.count}</td>
-                                            <td className="text-right px-5 py-4 text-gray-300">{formatCurrency(pkg.price_per_shoot)}</td>
-                                            <td className="text-right px-5 py-4 font-bold text-yellow-400">{formatCurrency(pkg.total)}</td>
-                                            <td className="text-right px-5 py-4 text-gray-400">{pct}%</td>
-                                        </tr>
-                                    );
-                                })}
+                                {package_breakdown.map((pkg) => (
+                                    <tr key={pkg.package_id} className="border-b border-[var(--glass-border)]/50 hover:bg-[var(--glass-bg)] transition-colors">
+                                        <td className="px-5 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <Package size={16} className="text-[var(--accent)]" />
+                                                <span className="font-medium text-[var(--text-color)]">{pkg.package_name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="text-center px-5 py-4">
+                                            <span className="font-semibold text-[var(--text-color)]">{pkg.count}</span>
+                                        </td>
+                                        <td className="text-right px-5 py-4 text-gray-300">{formatCurrency(pkg.total)}</td>
+                                        <td className="text-right px-5 py-4">
+                                            <span className="font-bold text-emerald-400">{formatCurrency(pkg.admin_total)}</span>
+                                        </td>
+                                    </tr>
+                                ))}
                                 <tr className="bg-[var(--glass-bg)]">
-                                    <td colSpan={3} className="px-5 py-4 font-bold text-[var(--text-color)]">Total Platform Revenue</td>
-                                    <td className="text-right px-5 py-4 font-bold text-yellow-400 text-base">{formatCurrency(total_revenue)}</td>
-                                    <td className="text-right px-5 py-4 text-gray-400">100%</td>
+                                    <td colSpan={2} className="px-5 py-4 font-bold text-[var(--text-color)]">Total</td>
+                                    <td className="text-right px-5 py-4 font-bold text-gray-300 text-base">{formatCurrency(total_revenue)}</td>
+                                    <td className="text-right px-5 py-4 font-bold text-emerald-400 text-base">{formatCurrency(total_admin_earnings)}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -379,13 +385,11 @@ const AdminEarnings = () => {
                                     <th className="text-left px-5 py-3 text-gray-400 font-medium">Rank</th>
                                     <th className="text-left px-5 py-3 text-gray-400 font-medium">Videographer</th>
                                     <th className="text-center px-5 py-3 text-gray-400 font-medium">Completed</th>
-                                    <th className="text-right px-5 py-3 text-gray-400 font-medium">Total Earnings</th>
-                                    <th className="text-right px-5 py-3 text-gray-400 font-medium">Avg/Shoot</th>
+                                    <th className="text-right px-5 py-3 text-gray-400 font-medium">Vid Cut Earned</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {videographer_breakdown.map((vid, idx) => {
-                                    const avg = vid.completed_shoots > 0 ? vid.total_earnings / vid.completed_shoots : 0;
                                     const isExpanded = expandedVid === vid.videographer_id;
                                     const hasDailyEarnings = vid.daily_earnings && Object.keys(vid.daily_earnings).length > 0;
                                     return (
@@ -397,12 +401,11 @@ const AdminEarnings = () => {
                                             <td className="px-5 py-4 text-gray-400 font-semibold">#{idx + 1}</td>
                                             <td className="px-5 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/30 flex items-center justify-center text-[var(--accent)] font-bold text-xs">
-                                                        {vid.name.charAt(0).toUpperCase()}
+                                                    <div className="w-8 h-8 rounded-full bg-[var(--accent)]/10 flex items-center justify-center text-[var(--accent)]">
+                                                        <Users size={14} />
                                                     </div>
                                                     <div>
                                                         <p className="font-medium text-[var(--text-color)]">{vid.name}</p>
-                                                        <p className="text-xs text-gray-500">{vid.email}</p>
                                                     </div>
                                                 </div>
                                             </td>
@@ -412,9 +415,8 @@ const AdminEarnings = () => {
                                                     {vid.completed_shoots}
                                                 </span>
                                             </td>
-                                            <td className="text-right px-5 py-4 font-bold text-green-400">{formatCurrency(vid.total_earnings)}</td>
-                                            <td className="text-right px-5 py-4 text-gray-300 flex items-center justify-end gap-2">
-                                                {formatCurrency(avg)}
+                                            <td className="text-right px-5 py-4 font-bold text-yellow-400 flex items-center justify-end gap-2">
+                                                {formatCurrency(vid.total_earnings)}
                                                 {hasDailyEarnings && (
                                                     isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />
                                                 )}

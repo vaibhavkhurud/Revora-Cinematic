@@ -11,6 +11,16 @@ const videographerSchema = new mongoose.Schema({
         type: String,
         maxlength: 20
     },
+    address: {
+        type: String
+    },
+    payout_profile: {
+        bank_name: { type: String },
+        account_name: { type: String },
+        account_number: { type: String },
+        ifsc_code: { type: String },
+        upi_id: { type: String }
+    },
     status: {
         type: String,
         enum: ['available', 'assigned', 'on_leave'],

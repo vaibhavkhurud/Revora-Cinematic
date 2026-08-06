@@ -3,6 +3,8 @@ import razorpayInstance from '../config/razorpay.js';
 import Booking from '../models/Booking.js';
 import Payment from '../models/Payment.js';
 import Package from '../models/Package.js';
+import User from '../models/User.js';
+import Notification from '../models/Notification.js';
 
 // @desc    Create Razorpay Order for a booking
 // @route   POST /api/payments/create-order
@@ -140,9 +142,26 @@ export const verifyPaymentSignature = async (req, res) => {
             payment.paid_at = new Date();
             await payment.save();
 
-            const booking = await Booking.findById(booking_id);
+            const booking = await Booking.findById(booking_id).populate('showroom_id', 'name');
             if (booking) {
                 await booking.save();
+            }
+
+            // Notify Admin
+            try {
+                const adminUsers = await User.find({ role: 'super_admin' });
+                const showroomName = booking?.showroom_id?.name || 'A Showroom';
+                const formattedTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+                
+                for (const admin of adminUsers) {
+                    await new Notification({
+                        user_id: admin._id,
+                        title: 'Payment Received',
+                        message: `${showroomName} paid ₹${payment.amount} at ${formattedTime} (Mock).`
+                    }).save();
+                }
+            } catch (notifErr) {
+                console.error('Notification error:', notifErr);
             }
 
             return res.status(200).json({ success: true, message: 'Mock payment verified successfully.' });
@@ -172,9 +191,26 @@ export const verifyPaymentSignature = async (req, res) => {
         await payment.save();
 
         // Update Booking status
-        const booking = await Booking.findById(booking_id);
+        const booking = await Booking.findById(booking_id).populate('showroom_id', 'name');
         if (booking) {
             await booking.save();
+        }
+
+        // Notify Admin
+        try {
+            const adminUsers = await User.find({ role: 'super_admin' });
+            const showroomName = booking?.showroom_id?.name || 'A Showroom';
+            const formattedTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+            
+            for (const admin of adminUsers) {
+                await new Notification({
+                    user_id: admin._id,
+                    title: 'Payment Received',
+                    message: `${showroomName} paid ₹${payment.amount} at ${formattedTime}.`
+                }).save();
+            }
+        } catch (notifErr) {
+            console.error('Notification error:', notifErr);
         }
 
         res.status(200).json({ success: true, message: 'Payment verified successfully.' });

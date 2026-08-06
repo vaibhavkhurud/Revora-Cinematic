@@ -17,7 +17,8 @@ import {
   UserCircle,
   X,
   Clock,
-  IndianRupee
+  IndianRupee,
+  Wallet
 } from 'lucide-react';
 import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
@@ -31,6 +32,7 @@ const navByRole = {
         { name: 'Packages',      path: '/admin/packages',        icon: Package },
         { name: 'Analytics',     path: '/admin/analytics',       icon: LineChart },
         { name: 'Earnings',      path: '/admin/earnings',        icon: IndianRupee },
+        { name: 'Withdrawals',   path: '/admin/withdrawals',     icon: Wallet },
         { name: 'Notifications', path: '/notifications',   icon: Bell },
         { name: 'Settings',      path: '/admin/settings',        icon: Settings },
     ],

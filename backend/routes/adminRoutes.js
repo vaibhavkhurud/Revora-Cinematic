@@ -9,7 +9,9 @@ import {
     updateAdminProfile,
     changeAdminPassword,
     getSystemSettings,
-    updateSystemSettings
+    updateSystemSettings,
+    getAllWithdrawals,
+    updateWithdrawalStatus
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -27,5 +29,8 @@ router.put('/profile', updateAdminProfile);
 router.put('/change-password', changeAdminPassword);
 router.get('/system-settings', getSystemSettings);
 router.put('/system-settings', updateSystemSettings);
+
+router.get('/withdrawals', getAllWithdrawals);
+router.patch('/withdrawals/:id/status', updateWithdrawalStatus);
 
 export default router;

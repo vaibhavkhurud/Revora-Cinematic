@@ -136,30 +136,19 @@ const AwaitingResponseCard = ({ shoot, onRespond, onViewDetails }) => {
                 />
             )}
             <div className="glass rounded-2xl border border-cyan-500/40 overflow-hidden group hover:border-cyan-500/70 transition-all hover:shadow-lg hover:shadow-cyan-500/20 relative">
-                {/* Pulsing indicator */}
-                <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
-                    <span className="relative flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
-                    </span>
-                    <span className="text-xs text-cyan-400 font-semibold bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 rounded-full">New Assignment</span>
-                </div>
-
-                {/* Image section */}
-                <div className="relative h-44 overflow-hidden bg-gradient-to-br from-cyan-500/10 to-transparent">
-                    <img
-                        src={shoot.image}
-                        alt={shoot.vehicle}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
-                        <p className="text-white font-bold text-lg">{shoot.vehicle}</p>
-                    </div>
-                </div>
-
                 {/* Content */}
-                <div className="p-5 space-y-4">
+                <div className="p-5 space-y-4 relative">
+                    {/* Pulsing indicator */}
+                    <div className="flex items-center gap-2 mb-3">
+                        <span className="relative flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+                        </span>
+                        <span className="text-xs text-cyan-400 font-semibold bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 rounded-full">New Assignment</span>
+                    </div>
+
                     <div>
+                        <p className="text-[var(--text-color)] font-semibold text-lg">{shoot.vehicle}</p>
                         <p className="text-gray-400 text-sm">{shoot.customer}</p>
                         <p className="text-xs text-cyan-400 font-semibold mt-1 flex items-center gap-1">
                             <IndianRupee size={12} />
@@ -292,97 +281,85 @@ const ShootCard = ({ shoot, onUpdateStatus, onViewDetails }) => {
     };
 
     return (
-        <div className="glass rounded-2xl border border-[var(--glass-border)] overflow-hidden group hover:border-[var(--accent)]/50 transition-all hover:shadow-lg hover:shadow-[var(--accent)]/20">
-            {/* Image section */}
-            <div className="relative h-48 overflow-hidden bg-gradient-to-br from-[var(--accent)]/10 to-transparent">
-                <img
-                    src={shoot.image}
-                    alt={shoot.vehicle}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute top-3 right-3">
-                    <StatusBadge status={shoot.status} />
+        <div className="glass rounded-2xl border border-[var(--glass-border)] overflow-hidden group hover:border-[var(--accent)]/50 transition-all hover:shadow-lg hover:shadow-[var(--accent)]/20 p-5 space-y-4">
+            {/* Header */}
+            <div className="flex justify-between items-start">
+                <div className="flex-1">
+                    <div className="mb-2">
+                        <StatusBadge status={shoot.status} />
+                    </div>
+                    <p className="text-[var(--text-color)] font-semibold text-lg">{shoot.vehicle}</p>
+                    <p className="text-gray-400 text-sm font-medium mt-0.5">{shoot.customer}</p>
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-                    <p className="text-white font-bold text-lg">{shoot.vehicle}</p>
+                <div className="relative">
+                    <button
+                        onClick={() => setIsMenuOpen(!isMenuOpen)}
+                        className="p-1 rounded-lg hover:bg-[var(--glass-bg)] transition-colors"
+                    >
+                        <MoreVertical size={18} className="text-gray-400" />
+                    </button>
+                    {isMenuOpen && (
+                        <div className="absolute right-0 top-full mt-1 bg-[var(--bg-color)] border border-[var(--glass-border)] rounded-lg shadow-lg z-10 min-w-[150px]">
+                            <button
+                                onClick={() => {
+                                    onViewDetails(shoot);
+                                    setIsMenuOpen(false);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-[var(--glass-bg)] transition-colors"
+                            >
+                                View Full Details
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Content section */}
-            <div className="p-5 space-y-4">
-                <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                        <p className="text-gray-400 text-sm font-medium">{shoot.customer}</p>
-                        <p className="text-[var(--text-color)] font-semibold text-lg">{shoot.vehicle}</p>
-                    </div>
-                    <div className="relative">
-                        <button
-                            onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            className="p-1 rounded-lg hover:bg-[var(--glass-bg)] transition-colors"
+            {/* Details grid */}
+            <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="flex items-start gap-2">
+                    {shoot.map_link ? (
+                        <a
+                            href={shoot.map_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Open in Google Maps"
+                            className="flex items-start gap-2 text-[var(--accent)] hover:text-yellow-300 transition-colors group"
+                            onClick={e => e.stopPropagation()}
                         >
-                            <MoreVertical size={18} className="text-gray-400" />
-                        </button>
-                        {isMenuOpen && (
-                            <div className="absolute right-0 top-full mt-1 bg-[var(--bg-color)] border border-[var(--glass-border)] rounded-lg shadow-lg z-10 min-w-[150px]">
-                                <button
-                                    onClick={() => {
-                                        onViewDetails(shoot);
-                                        setIsMenuOpen(false);
-                                    }}
-                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-[var(--glass-bg)] transition-colors"
-                                >
-                                    View Full Details
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                            <MapPin size={16} className="mt-0.5 flex-shrink-0 group-hover:scale-110 transition-transform" />
+                            <span className="truncate underline underline-offset-2" title={shoot.location}>{shoot.location}</span>
+                        </a>
+                    ) : (
+                        <>
+                            <MapPin size={16} className="text-[var(--accent)] mt-0.5 flex-shrink-0" />
+                            <span className="text-gray-300 truncate" title={shoot.location}>{shoot.location}</span>
+                        </>
+                    )}
                 </div>
+                <div className="flex items-start gap-2">
+                    <Calendar size={16} className="text-[var(--accent)] mt-0.5 flex-shrink-0" />
+                    <span className="text-gray-300">{shoot.date}</span>
+                </div>
+                <div className="flex items-start gap-2">
+                    <Clock size={16} className="text-[var(--accent)] mt-0.5 flex-shrink-0" />
+                    <span className="text-gray-300">{shoot.time}</span>
+                </div>
+                <div className="flex items-start gap-2">
+                    <Zap size={16} className="text-[var(--accent)] mt-0.5 flex-shrink-0" />
+                    <span className="text-gray-300 truncate" title={shoot.notes}>{shoot.notes || 'No notes'}</span>
+                </div>
+            </div>
 
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="flex items-start gap-2">
-                        {shoot.map_link ? (
-                            <a
-                                href={shoot.map_link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="Open in Google Maps"
-                                className="flex items-start gap-2 text-[var(--accent)] hover:text-yellow-300 transition-colors group"
-                                onClick={e => e.stopPropagation()}
-                            >
-                                <MapPin size={16} className="mt-0.5 flex-shrink-0 group-hover:scale-110 transition-transform" />
-                                <span className="truncate underline underline-offset-2" title={shoot.location}>{shoot.location}</span>
-                            </a>
-                        ) : (
-                            <>
-                                <MapPin size={16} className="text-[var(--accent)] mt-0.5 flex-shrink-0" />
-                                <span className="text-gray-300 truncate" title={shoot.location}>{shoot.location}</span>
-                            </>
-                        )}
-                    </div>
-                    <div className="flex items-start gap-2">
-                        <Calendar size={16} className="text-[var(--accent)] mt-0.5 flex-shrink-0" />
-                        <span className="text-gray-300">{shoot.date}</span>
-                    </div>
-                    <div className="flex items-start gap-2">
-                        <Clock size={16} className="text-[var(--accent)] mt-0.5 flex-shrink-0" />
-                        <span className="text-gray-300">{shoot.time}</span>
-                    </div>
-                    <div className="flex items-start gap-2">
-                        <Zap size={16} className="text-[var(--accent)] mt-0.5 flex-shrink-0" />
-                        <span className="text-gray-300 truncate" title={shoot.notes}>{shoot.notes || 'No notes'}</span>
-                    </div>
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                    {getActionButton()}
-                    <button
-                        onClick={() => onViewDetails(shoot)}
-                        className="px-4 py-2 border border-[var(--glass-border)] rounded-lg text-gray-300 hover:text-white hover:bg-[var(--glass-bg)] transition-all flex items-center justify-center gap-2"
-                    >
-                        <FileText size={16} />
-                        Details
-                    </button>
-                </div>
+            {/* Actions */}
+            <div className="flex gap-2 pt-2">
+                {getActionButton()}
+                <button
+                    onClick={() => onViewDetails(shoot)}
+                    className="px-4 py-2 border border-[var(--glass-border)] rounded-lg text-gray-300 hover:text-white hover:bg-[var(--glass-bg)] transition-all flex items-center justify-center gap-2"
+                >
+                    <FileText size={16} />
+                    Details
+                </button>
             </div>
         </div>
     );

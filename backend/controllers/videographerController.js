@@ -6,6 +6,7 @@ import Notification from '../models/Notification.js';
 import Showroom from '../models/Showroom.js';
 import User from '../models/User.js';
 import Package from '../models/Package.js';
+import Withdrawal from '../models/Withdrawal.js';
 
 // @desc    Get videographer dashboard data
 // @route   GET /api/videographer/dashboard
@@ -18,7 +19,7 @@ export const getDashboard = async (req, res) => {
         }
 
         const bookings = await Booking.find({ videographer_id: videographer._id })
-            .populate('package_id', 'name price')
+            .populate('package_id', 'name price videographer_share')
             .populate('showroom_id', 'name address map_link')
             .sort({ booking_date: 1 });
 
@@ -72,7 +73,9 @@ export const getDashboard = async (req, res) => {
                 image: finalImage,
                 notes: booking.notes,
                 package_name: booking.package_id?.name || 'N/A',
-                package_price: booking.package_id?.price || 0
+                package_price: booking.package_id?.videographer_share !== undefined && booking.package_id?.videographer_share !== null
+                    ? booking.package_id.videographer_share
+                    : Math.round((booking.package_id?.price || 0) * 0.6)
             };
 
             // Shoots awaiting videographer response (assigned but not yet accepted/rejected)
@@ -133,7 +136,7 @@ export const respondToShoot = async (req, res) => {
         }
 
         const booking = await Booking.findById(req.params.id)
-            .populate('package_id', 'name price');
+            .populate('package_id', 'name price videographer_share');
         if (!booking) {
             return res.status(404).json({ message: 'Booking not found' });
         }
@@ -283,7 +286,7 @@ export const getBookingDetails = async (req, res) => {
         }
 
         const booking = await Booking.findById(req.params.id)
-            .populate('package_id', 'name duration_minutes features price')
+            .populate('package_id', 'name duration_minutes features price videographer_share')
             .populate('showroom_id', 'name address map_link contact_number');
 
         if (!booking || booking.videographer_id.toString() !== videographer._id.toString()) {
@@ -295,8 +298,15 @@ export const getBookingDetails = async (req, res) => {
             .populate('user_id', 'name role')
             .sort({ created_at: -1 });
 
+        const bookingObj = booking.toObject();
+        if (bookingObj.package_id) {
+            bookingObj.package_id.price = bookingObj.package_id.videographer_share !== undefined && bookingObj.package_id.videographer_share !== null
+                ? bookingObj.package_id.videographer_share
+                : Math.round((bookingObj.package_id.price || 0) * 0.6);
+        }
+
         res.json({
-            booking,
+            booking: bookingObj,
             images,
             activities
         });
@@ -328,7 +338,7 @@ export const getEarnings = async (req, res) => {
             videographer_id: videographer._id,
             status: 'completed',
             ...dateFilter
-        }).populate('package_id', 'name price').sort({ updated_at: -1 });
+        }).populate('package_id', 'name price videographer_share').sort({ updated_at: -1 });
 
         // Calculate totals
         let totalEarnings = 0;
@@ -336,7 +346,11 @@ export const getEarnings = async (req, res) => {
         const recentBookings = [];
 
         completedBookings.forEach(booking => {
-            const price = booking.package_id?.price || 0;
+            const rawPrice = booking.package_id?.price || 0;
+            const price = booking.package_id?.videographer_share !== undefined && booking.package_id?.videographer_share !== null
+                ? booking.package_id.videographer_share
+                : Math.round(rawPrice * 0.6);
+            
             const packageName = booking.package_id?.name || 'Unknown Package';
             const packageId = booking.package_id?._id?.toString() || 'unknown';
 
@@ -369,6 +383,187 @@ export const getEarnings = async (req, res) => {
             completed_shoots: completedBookings.length,
             package_breakdown: Object.values(packageBreakdown).sort((a, b) => b.total - a.total),
             recent_bookings: recentBookings.slice(0, 20)
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Get videographer withdrawal history and balance
+// @route   GET /api/videographer/withdrawals
+// @access  Private/Videographer
+export const getWithdrawals = async (req, res) => {
+    try {
+        const videographer = await Videographer.findOne({ user_id: req.user._id });
+        if (!videographer) return res.status(404).json({ message: 'Videographer profile not found' });
+
+        const withdrawals = await Withdrawal.find({ videographer_id: videographer._id }).sort({ requested_at: -1 });
+        
+        // Calculate total earnings from completed shoots
+        const completedBookings = await Booking.find({
+            videographer_id: videographer._id,
+            status: 'completed'
+        }).populate('package_id', 'price videographer_share');
+
+        let totalEarnings = 0;
+        completedBookings.forEach(booking => {
+            const price = booking.package_id?.price || 0;
+            const videographerShare = booking.package_id?.videographer_share !== undefined && booking.package_id?.videographer_share !== null
+                ? booking.package_id.videographer_share
+                : Math.round(price * 0.6);
+            totalEarnings += videographerShare;
+        });
+
+        // Calculate withdrawn and pending amounts
+        let totalWithdrawn = 0;
+        let pendingAmount = 0;
+
+        withdrawals.forEach(w => {
+            if (w.status === 'completed') totalWithdrawn += w.amount;
+            if (w.status === 'pending' || w.status === 'approved') pendingAmount += w.amount;
+        });
+
+        const availableBalance = totalEarnings - totalWithdrawn - pendingAmount;
+
+        res.json({
+            withdrawals,
+            stats: {
+                total_earnings: totalEarnings,
+                total_withdrawn: totalWithdrawn,
+                pending_amount: pendingAmount,
+                available_balance: availableBalance > 0 ? availableBalance : 0
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Request a new withdrawal
+// @route   POST /api/videographer/withdrawals
+// @access  Private/Videographer
+export const requestWithdrawal = async (req, res) => {
+    try {
+        const { amount, payment_method } = req.body;
+        
+        if (!amount || amount < 100) {
+            return res.status(400).json({ message: 'Minimum withdrawal amount is ₹100' });
+        }
+
+        const videographer = await Videographer.findOne({ user_id: req.user._id });
+        if (!videographer) return res.status(404).json({ message: 'Videographer profile not found' });
+
+        // Ensure payout profile is set up
+        if (!videographer.payout_profile || (!videographer.payout_profile.upi_id && !videographer.payout_profile.account_number)) {
+            return res.status(400).json({ message: 'Please update your payout details in your profile before requesting a withdrawal.' });
+        }
+
+        // Validate available balance (recalculate to prevent tampering)
+        const completedBookings = await Booking.find({ videographer_id: videographer._id, status: 'completed' })
+            .populate('package_id', 'price videographer_share');
+            
+        let totalEarnings = 0;
+        completedBookings.forEach(booking => {
+            const price = booking.package_id?.price || 0;
+            const videographerShare = booking.package_id?.videographer_share !== undefined && booking.package_id?.videographer_share !== null
+                ? booking.package_id.videographer_share
+                : Math.round(price * 0.6);
+            totalEarnings += videographerShare;
+        });
+
+        const withdrawals = await Withdrawal.find({ videographer_id: videographer._id });
+        let usedAmount = 0;
+        withdrawals.forEach(w => {
+            if (['pending', 'approved', 'completed'].includes(w.status)) {
+                usedAmount += w.amount;
+            }
+        });
+
+        const availableBalance = totalEarnings - usedAmount;
+
+        if (amount > availableBalance) {
+            return res.status(400).json({ message: `Requested amount exceeds available balance (₹${availableBalance})` });
+        }
+
+        // Create the withdrawal request
+        const withdrawal = new Withdrawal({
+            videographer_id: videographer._id,
+            amount,
+            payment_method,
+            payout_details: videographer.payout_profile // Snapshot of current details
+        });
+
+        await withdrawal.save();
+
+        // Notify Admin
+        const adminUsers = await User.find({ role: 'super_admin' });
+        for (const admin of adminUsers) {
+            await new Notification({
+                user_id: admin._id,
+                title: 'New Withdrawal Request',
+                message: `Videographer ${req.user.name} requested a withdrawal of ₹${amount}.`
+            }).save();
+        }
+
+        res.status(201).json({ message: 'Withdrawal requested successfully', withdrawal });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Get Videographer Profile
+// @route   GET /api/videographer/profile
+// @access  Private/Videographer
+export const getProfile = async (req, res) => {
+    try {
+        const videographer = await Videographer.findOne({ user_id: req.user._id }).populate('user_id', 'name email');
+        if (!videographer) return res.status(404).json({ message: 'Videographer profile not found' });
+        
+        res.json({
+            name: videographer.user_id.name,
+            email: videographer.user_id.email,
+            phone: videographer.phone,
+            address: videographer.address,
+            payout_profile: videographer.payout_profile || {}
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Update Videographer Profile
+// @route   PUT /api/videographer/profile
+// @access  Private/Videographer
+export const updateProfile = async (req, res) => {
+    try {
+        const { phone, address, payout_profile } = req.body;
+        
+        const videographer = await Videographer.findOne({ user_id: req.user._id });
+        if (!videographer) return res.status(404).json({ message: 'Videographer profile not found' });
+        
+        if (phone) videographer.phone = phone;
+        if (address) videographer.address = address;
+        
+        if (payout_profile) {
+            videographer.payout_profile = {
+                ...videographer.payout_profile,
+                ...payout_profile
+            };
+        }
+        
+        await videographer.save();
+        
+        res.json({
+            message: 'Profile updated successfully',
+            profile: {
+                phone: videographer.phone,
+                address: videographer.address,
+                payout_profile: videographer.payout_profile
+            }
         });
     } catch (error) {
         console.error(error);

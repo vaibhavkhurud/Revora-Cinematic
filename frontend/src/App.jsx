@@ -23,7 +23,9 @@ import VideographerDashboard from './pages/dashboard/VideographerDashboard';
 import ShootDetails from './pages/dashboard/ShootDetails';
 import Attendance from './pages/dashboard/Attendance';
 import Earnings from './pages/dashboard/Earnings';
+import VideographerProfile from './pages/dashboard/Profile';
 import AdminEarnings from './pages/admin/AdminEarnings';
+import AdminWithdrawals from './pages/admin/Withdrawals';
 import AdminSettings from './pages/admin/Settings';
 import Notifications from './pages/Notifications';
 import NotFound from './pages/NotFound';
@@ -70,6 +72,7 @@ function App() {
               <Route path="videographers/:id" element={<VideographerReport />} />
               <Route path="analytics" element={<Analytics />} />
               <Route path="earnings" element={<AdminEarnings />} />
+              <Route path="withdrawals" element={<AdminWithdrawals />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
 
@@ -107,6 +110,7 @@ function App() {
               <Route path="dashboard" element={<VideographerDashboard />} />
               <Route path="attendance" element={<Attendance />} />
               <Route path="earnings" element={<Earnings />} />
+              <Route path="profile" element={<VideographerProfile />} />
               <Route path="shoots/:id" element={<ShootDetails />} />
             </Route>
 

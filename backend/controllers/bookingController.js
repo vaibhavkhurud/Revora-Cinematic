@@ -48,11 +48,18 @@ const getOwnerShowroom = async (userId) => Showroom.findOne({ owner_id: userId }
 const serializePackage = (packageItem) => {
     if (!packageItem) return null;
 
+    const price = Number(packageItem.price || 0);
+    const videographer_share = packageItem.videographer_share !== undefined && packageItem.videographer_share !== null 
+        ? Number(packageItem.videographer_share) 
+        : Math.round(price * 0.6);
+
     return {
         id: packageItem._id.toString(),
         name: packageItem.name,
         description: packageItem.description || '',
-        price: Number(packageItem.price || 0),
+        price,
+        videographer_share,
+        admin_earning: price - videographer_share,
         duration_minutes: Number(packageItem.duration_minutes || 0),
         features: Array.isArray(packageItem.features) ? packageItem.features : []
     };
@@ -700,7 +707,7 @@ export const getAdminEarnings = async (req, res) => {
         }
 
         const completedBookings = await Booking.find({ status: 'completed', ...dateFilter })
-            .populate('package_id', 'name price')
+            .populate('package_id', 'name price videographer_share')
             .populate({
                 path: 'videographer_id',
                 select: 'user_id',
@@ -709,6 +716,7 @@ export const getAdminEarnings = async (req, res) => {
             .sort({ updated_at: -1 });
 
         let totalRevenue = 0;
+        let totalAdminEarnings = 0;
         const packageBreakdown = {};
         const videographerBreakdown = {};
 
@@ -717,10 +725,16 @@ export const getAdminEarnings = async (req, res) => {
 
         completedBookings.forEach(booking => {
             const price = booking.package_id?.price || 0;
+            const videographerShare = booking.package_id?.videographer_share !== undefined && booking.package_id?.videographer_share !== null
+                ? booking.package_id.videographer_share
+                : Math.round(price * 0.6);
+            const adminShare = price - videographerShare;
+
             const packageName = booking.package_id?.name || 'Unknown Package';
             const packageId = booking.package_id?._id?.toString() || 'unknown';
 
             totalRevenue += price;
+            totalAdminEarnings += adminShare;
 
             // Package breakdown
             if (!packageBreakdown[packageId]) {
@@ -729,11 +743,14 @@ export const getAdminEarnings = async (req, res) => {
                     package_name: packageName,
                     count: 0,
                     price_per_shoot: price,
-                    total: 0
+                    admin_cut_per_shoot: adminShare,
+                    total: 0,
+                    admin_total: 0
                 };
             }
             packageBreakdown[packageId].count++;
             packageBreakdown[packageId].total += price;
+            packageBreakdown[packageId].admin_total += adminShare;
 
             // Videographer breakdown
             if (booking.videographer_id) {
@@ -751,12 +768,12 @@ export const getAdminEarnings = async (req, res) => {
                     };
                 }
                 videographerBreakdown[vidId].completed_shoots++;
-                videographerBreakdown[vidId].total_earnings += price;
+                videographerBreakdown[vidId].total_earnings += videographerShare;
 
                 const date = booking.updated_at || booking.created_at;
                 if (date) {
                     const dateKey = new Date(date).toISOString().split('T')[0];
-                    videographerBreakdown[vidId].daily_earnings[dateKey] = (videographerBreakdown[vidId].daily_earnings[dateKey] || 0) + price;
+                    videographerBreakdown[vidId].daily_earnings[dateKey] = (videographerBreakdown[vidId].daily_earnings[dateKey] || 0) + videographerShare;
                 }
             }
 
@@ -764,12 +781,13 @@ export const getAdminEarnings = async (req, res) => {
             const date = booking.updated_at || booking.created_at;
             if (date) {
                 const monthKey = new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-                monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + price;
+                monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + adminShare;
             }
         });
 
         res.json({
             total_revenue: totalRevenue,
+            total_admin_earnings: totalAdminEarnings,
             total_completed_shoots: completedBookings.length,
             package_breakdown: Object.values(packageBreakdown).sort((a, b) => b.total - a.total),
             videographer_breakdown: Object.values(videographerBreakdown).sort((a, b) => b.total_earnings - a.total_earnings),

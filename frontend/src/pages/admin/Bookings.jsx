@@ -243,6 +243,13 @@ const Bookings = () => {
                                     <td className="px-5 py-4 min-w-[160px]">
                                         <p className="text-sm text-[var(--text-h)]">{booking.package?.name || '-'}</p>
                                         <p className="text-xs text-gray-500 mt-0.5">{booking.package?.duration_minutes || 0} min</p>
+                                        {booking.package && (
+                                            <div className="mt-1.5 flex flex-col gap-0.5">
+                                                <p className="text-[10px] text-gray-400 font-mono">Total: ₹{booking.package.price}</p>
+                                                <p className="text-[10px] text-emerald-400/80 font-mono">Admin: ₹{booking.package.admin_earning}</p>
+                                                <p className="text-[10px] text-amber-400/80 font-mono">Vid: ₹{booking.package.videographer_share}</p>
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="px-5 py-4 min-w-[180px]">
                                         <p className="text-sm text-[var(--text-h)]">{booking.showroom?.name || '-'}</p>

@@ -5,7 +5,11 @@ import {
     updateShootStatus,
     getBookingDetails,
     respondToShoot,
-    getEarnings
+    getEarnings,
+    getWithdrawals,
+    requestWithdrawal,
+    getProfile,
+    updateProfile
 } from '../controllers/videographerController.js';
 
 const router = express.Router();
@@ -15,8 +19,13 @@ router.use(authorize('videographer'));
 
 router.get('/dashboard', getDashboard);
 router.get('/earnings', getEarnings);
+router.get('/withdrawals', getWithdrawals);
+router.post('/withdrawals', requestWithdrawal);
 router.get('/booking/:id', getBookingDetails);
 router.put('/booking/:id/status', updateShootStatus);
 router.patch('/booking/:id/respond', respondToShoot);
+
+router.get('/profile', getProfile);
+router.put('/profile', updateProfile);
 
 export default router;
